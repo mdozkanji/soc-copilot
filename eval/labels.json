@@ -1,0 +1,21 @@
+{
+  "_readme": "Keyed by source_alert_id (stable, from the raw record), NOT by the generated alert_id (a random UUID assigned at normalization time). This file is only ever loaded by eval/ code, never by the agent or the normal pipeline — see the note in src/soc_copilot/ingest/schema.py for why.",
+
+  "sig-0001": {"ground_truth": "malicious", "true_mitre_technique": "T1059.001", "case_id": "case-001", "notes": "Initial encoded PowerShell execution on WKS-EU-0231."},
+  "sig-0002": {"ground_truth": "malicious", "true_mitre_technique": "T1046", "case_id": "case-002", "notes": "Unrelated external recon scan against a different internal host; separate incident from case-001."},
+  "sig-0003": {"ground_truth": "benign", "true_mitre_technique": null, "case_id": null, "notes": "Confirmed with the user: legitimate business travel. Good example of a 'looks suspicious but isn't' case for calibration."},
+  "sig-0004": {"ground_truth": "malicious", "true_mitre_technique": "T1568.002", "case_id": "case-001", "notes": "DGA-pattern beaconing from the same host as sig-0001."},
+  "sig-0005": {"ground_truth": "benign", "true_mitre_technique": null, "case_id": null, "notes": "User mistyped password; unrelated account/host."},
+  "sig-0006": {"ground_truth": "malicious", "true_mitre_technique": "T1021.002", "case_id": "case-001", "notes": "SMB lateral movement from the same intrusion."},
+  "sig-0007": {"ground_truth": "malicious", "true_mitre_technique": "T1053.005", "case_id": "case-001", "notes": "Scheduled task persistence, same intrusion."},
+  "sig-0008": {"ground_truth": "benign", "true_mitre_technique": null, "case_id": null, "notes": "Allowlisted vendor update endpoint."},
+  "sig-0009": {"ground_truth": "malicious", "true_mitre_technique": "T1041", "case_id": "case-001", "notes": "Exfiltration stage of the same intrusion."},
+  "sig-0010": {"ground_truth": "benign", "true_mitre_technique": null, "case_id": null, "notes": "Standard help-desk password reset flow."},
+
+  "edr-9001": {"ground_truth": "malicious", "true_mitre_technique": "T1003", "case_id": "case-001", "notes": "LSASS credential dumping, same intrusion, same host as sig-0001."},
+  "edr-9002": {"ground_truth": "malicious", "true_mitre_technique": "T1059.001", "case_id": "case-001", "notes": "Staged PowerShell reverse shell, same intrusion."},
+  "edr-9003": {"ground_truth": "benign", "true_mitre_technique": null, "case_id": null, "notes": "Confirmed legitimate internal tooling installer, deliberately ambiguous-looking for calibration testing (unsigned + temp dir is not sufficient evidence alone)."},
+  "edr-9004": {"ground_truth": "malicious", "true_mitre_technique": "T1204.002", "case_id": "case-003", "notes": "Separate incident: malicious Office macro on a different host/user (tngo)."},
+  "edr-9005": {"ground_truth": "benign", "true_mitre_technique": null, "case_id": null, "notes": "Signed vendor agent self-update."},
+  "edr-9006": {"ground_truth": "malicious", "true_mitre_technique": "T1560", "case_id": "case-001", "notes": "Archive staging ahead of the sig-0009 exfiltration step, same intrusion."}
+}
