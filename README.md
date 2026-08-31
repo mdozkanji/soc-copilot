@@ -4,14 +4,18 @@ An AI-powered SOC alert triage & investigation copilot: a tool-calling LLM agent
 
 Built as a portfolio/research project — see [`docs/PROJECT_OVERVIEW.md`](docs/PROJECT_OVERVIEW.md) for the full rationale (problem, approach, why it matters, competitive landscape) and [`docs/BUILD_PLAN.md`](docs/BUILD_PLAN.md) for the week-by-week plan. Progress is tracked as we go in [`devlog/`](devlog/), written during each build session rather than reconstructed afterward.
 
-## Status: Week 1 — Foundations & data
+## Status: Week 2 — Enrichment layer ✅ complete
 
 - [x] Repo scaffold, `pyproject.toml`, package layout
 - [x] Internal `Alert` schema (`src/soc_copilot/ingest/schema.py`)
 - [x] Per-source normalizers for two sample formats (`src/soc_copilot/ingest/normalize.py`)
 - [x] 16-alert hand-authored sample dataset with ground-truth labels (`data/`, `eval/labels.json`)
-- [x] Unit tests, all passing (`tests/test_normalize.py`)
-- [ ] Week 2: enrichment (VirusTotal / AbuseIPDB)
+- [x] VirusTotal + AbuseIPDB clients with retry/backoff (`src/soc_copilot/enrich/`)
+- [x] SQLite TTL cache + persisted daily-quota tracking + sliding-window rate limiter
+- [x] Private/internal-IP guard (verified against all 13 distinct IPs in the sample set)
+- [x] Unit tests, all passing (63/63, `tests/`)
+- [x] Live-verified against real VT/AbuseIPDB APIs — correct on a known-clean and a known-malicious IP (see `devlog/0002-week2-enrichment.md`)
+- [ ] Week 3: correlation engine
 
 ## Quickstart
 
@@ -36,9 +40,22 @@ soc-copilot/
 ├── eval/          # ground-truth labels and (from Week 8) the evaluation harness
 ├── src/
 │   └── soc_copilot/
-│       └── ingest/   # alert schema + normalization (Week 1)
-│           # enrich/, correlate/, agent/, rag/, api/ arrive in later weeks
+│       ├── ingest/   # alert schema + normalization (Week 1)
+│       └── enrich/   # VirusTotal / AbuseIPDB clients, cache, rate limiting (Week 2)
+│           # correlate/, agent/, rag/, api/ arrive in later weeks
 └── tests/
+```
+
+## Environment variables
+
+Copy `.env.example` to `.env` and fill in your own free-tier API keys (never commit `.env` — it's gitignored):
+- `VT_API_KEY` — https://www.virustotal.com/gui/my-apikey
+- `ABUSEIPDB_API_KEY` — https://www.abuseipdb.com/account/api
+
+```bash
+# one-off enrichment lookups
+python -m soc_copilot.enrich.cli --ip 185.220.101.47
+python -m soc_copilot.enrich.cli --hash <sha256>
 ```
 
 ## License
