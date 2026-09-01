@@ -1,0 +1,37 @@
+{
+  "WKS-EU-0231": {
+    "owner": "jsmith",
+    "department": "IT Operations",
+    "asset_type": "workstation",
+    "criticality": "high",
+    "notes": "Has local admin rights on multiple servers and is used for routine domain administration tasks -- compromise of this host has an outsized blast radius compared to a typical end-user workstation."
+  },
+  "WKS-EU-0450": {
+    "owner": "bpatel",
+    "department": "Finance",
+    "asset_type": "workstation",
+    "criticality": "medium",
+    "notes": "Standard end-user workstation with access to financial reporting systems."
+  },
+  "WKS-EU-0512": {
+    "owner": "tngo",
+    "department": "Marketing",
+    "asset_type": "workstation",
+    "criticality": "low",
+    "notes": "Standard end-user workstation, no elevated access."
+  },
+  "WKS-EU-0102": {
+    "owner": "shared",
+    "department": "IT Operations",
+    "asset_type": "workstation",
+    "criticality": "low",
+    "notes": "Shared/kiosk workstation, no individual user assignment."
+  },
+  "WKS-EU-0311": {
+    "owner": "rkovacs",
+    "department": "HR",
+    "asset_type": "workstation",
+    "criticality": "medium",
+    "notes": "Standard end-user workstation with access to HR/PII systems."
+  }
+}

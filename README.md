@@ -4,7 +4,7 @@ An AI-powered SOC alert triage & investigation copilot: a tool-calling LLM agent
 
 Built as a portfolio/research project — see [`docs/PROJECT_OVERVIEW.md`](docs/PROJECT_OVERVIEW.md) for the full rationale (problem, approach, why it matters, competitive landscape) and [`docs/BUILD_PLAN.md`](docs/BUILD_PLAN.md) for the week-by-week plan. Progress is tracked as we go in [`devlog/`](devlog/), written during each build session rather than reconstructed afterward.
 
-## Status: Week 3 — Correlation engine ✅ complete
+## Status: Week 4 — Agent core ✅ code complete, live reasoning pending your run
 
 - [x] Repo scaffold, `pyproject.toml`, package layout
 - [x] Internal `Alert` schema (`src/soc_copilot/ingest/schema.py`)
@@ -16,8 +16,10 @@ Built as a portfolio/research project — see [`docs/PROJECT_OVERVIEW.md`](docs/
 - [x] Live-verified against real VT/AbuseIPDB APIs
 - [x] Entity-based correlation engine with time-windowed connected-components clustering (`src/soc_copilot/correlate/`)
 - [x] Cluster-purity tests against real ground truth (`eval/labels.json`)
-- [x] Unit tests, all passing (75/75, `tests/`)
-- [ ] Week 4: agent core (Claude tool-calling loop)
+- [x] Claude tool-calling agent loop: `enrich_ip`, `enrich_hash`, `get_asset_context`, `submit_verdict` (`src/soc_copilot/agent/`)
+- [x] Unit tests, all passing (90/90, `tests/`)
+- [ ] Live agent run against the real Anthropic API — **pending, needs to be run locally** (see `devlog/0004-week4-agent-core.md`)
+- [ ] Week 5: RAG over threat intel (MITRE ATT&CK)
 
 ## Quickstart
 
@@ -44,14 +46,18 @@ soc-copilot/
 │   └── soc_copilot/
 │       ├── ingest/     # alert schema + normalization (Week 1)
 │       ├── enrich/     # VirusTotal / AbuseIPDB clients, cache, rate limiting (Week 2)
-│       └── correlate/  # entity-based clustering into cases (Week 3)
-│           # agent/, rag/, api/ arrive in later weeks
+│       ├── correlate/  # entity-based clustering into cases (Week 3)
+│       └── agent/      # Claude tool-calling loop, verdict schema (Week 4)
+│           # rag/, api/ arrive in later weeks
 └── tests/
 ```
 
 ```bash
 # run correlation over the sample dataset and print a case summary
 python -m soc_copilot.correlate.cli
+
+# run the agent end-to-end on a real case (needs ANTHROPIC_API_KEY; VT/AbuseIPDB keys optional)
+python -m soc_copilot.agent.cli
 ```
 
 ## Environment variables
