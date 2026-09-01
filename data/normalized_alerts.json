@@ -1,7 +1,7 @@
 [
   {
-    "alert_id": "f03727bd-e2d8-4675-a975-d28aa07e92c7",
-    "ingested_at": "2026-08-30T08:39:48.154723Z",
+    "alert_id": "dd403bb3-a630-4022-aa32-16fdc5df0c9c",
+    "ingested_at": "2026-09-01T06:26:11.506005Z",
     "source": "sigma_synthetic",
     "source_alert_id": "sig-0010",
     "rule_name": "Password Reset Request",
@@ -33,8 +33,8 @@
     }
   },
   {
-    "alert_id": "0614cb02-2384-4640-ae59-0908efd9915a",
-    "ingested_at": "2026-08-30T08:39:48.154685Z",
+    "alert_id": "aae4b3e7-b8ce-4a42-93cc-da76180e2764",
+    "ingested_at": "2026-09-01T06:26:11.505963Z",
     "source": "sigma_synthetic",
     "source_alert_id": "sig-0005",
     "rule_name": "Multiple Failed Logon Attempts",
@@ -66,8 +66,8 @@
     }
   },
   {
-    "alert_id": "490e4281-c52d-4460-bef7-022b880367c7",
-    "ingested_at": "2026-08-30T08:39:48.154853Z",
+    "alert_id": "ecde169b-f238-4849-b5dd-75f9700968e8",
+    "ingested_at": "2026-09-01T06:26:11.506137Z",
     "source": "edr_synthetic",
     "source_alert_id": "edr-9005",
     "rule_name": "Endpoint Agent Self-Update",
@@ -102,8 +102,8 @@
     }
   },
   {
-    "alert_id": "3ac81321-f76b-4765-8679-abae082e3dd8",
-    "ingested_at": "2026-08-30T08:39:48.154708Z",
+    "alert_id": "0131ac6f-84f8-40ac-baa0-8040538aa308",
+    "ingested_at": "2026-09-01T06:26:11.505989Z",
     "source": "sigma_synthetic",
     "source_alert_id": "sig-0008",
     "rule_name": "Software Update Check-In",
@@ -135,8 +135,8 @@
     }
   },
   {
-    "alert_id": "089bdfe1-b509-4574-ab24-f275f33ebc88",
-    "ingested_at": "2026-08-30T08:39:48.154664Z",
+    "alert_id": "492f4ace-e2c0-4194-b408-65f956d4e7c7",
+    "ingested_at": "2026-09-01T06:26:11.505936Z",
     "source": "sigma_synthetic",
     "source_alert_id": "sig-0003",
     "rule_name": "Successful VPN Login From New Country",
@@ -168,8 +168,8 @@
     }
   },
   {
-    "alert_id": "a9008952-5124-4849-9cd9-a03cf3d80773",
-    "ingested_at": "2026-08-30T08:39:48.154842Z",
+    "alert_id": "22439e7e-ed5a-4d21-bd49-69b623265fa8",
+    "ingested_at": "2026-09-01T06:26:11.506126Z",
     "source": "edr_synthetic",
     "source_alert_id": "edr-9004",
     "rule_name": "Office Macro Spawned Child Process",
@@ -204,8 +204,8 @@
     }
   },
   {
-    "alert_id": "42f57ab9-f62e-4add-8237-4f2848b06293",
-    "ingested_at": "2026-08-30T08:39:48.154832Z",
+    "alert_id": "a33f7a51-bbaa-4728-bb67-45d25cb8d694",
+    "ingested_at": "2026-09-01T06:26:11.506117Z",
     "source": "edr_synthetic",
     "source_alert_id": "edr-9003",
     "rule_name": "Unsigned Binary Executed From User Temp",
@@ -240,8 +240,8 @@
     }
   },
   {
-    "alert_id": "25a436a2-0ae9-42e8-b9cd-84a71a85672e",
-    "ingested_at": "2026-08-30T08:39:48.154648Z",
+    "alert_id": "b4d92493-82fa-4c3d-b103-a8bdbb0186f2",
+    "ingested_at": "2026-09-01T06:26:11.505919Z",
     "source": "sigma_synthetic",
     "source_alert_id": "sig-0002",
     "rule_name": "External Port Scan Detected",
@@ -253,7 +253,7 @@
     "src_port": null,
     "dst_port": null,
     "user": null,
-    "host": "WKS-EU-0231",
+    "host": null,
     "process_name": null,
     "command_line": null,
     "file_hash_sha256": null,
@@ -268,13 +268,13 @@
       "dst_ip": "10.20.4.10",
       "dest_port": null,
       "user": null,
-      "computer": "WKS-EU-0231",
+      "computer": null,
       "mitre": "T1046"
     }
   },
   {
-    "alert_id": "cdb91aff-e49c-46a1-8c10-3c55d7e6552e",
-    "ingested_at": "2026-08-30T08:39:48.154614Z",
+    "alert_id": "979706ee-a44f-46a0-9a2c-95cdc908f138",
+    "ingested_at": "2026-09-01T06:26:11.505877Z",
     "source": "sigma_synthetic",
     "source_alert_id": "sig-0001",
     "rule_name": "Suspicious PowerShell Encoded Command",
@@ -306,8 +306,8 @@
     }
   },
   {
-    "alert_id": "8ea9ab74-e0b6-4a4e-b0e3-ce4f9f1aceb5",
-    "ingested_at": "2026-08-30T08:39:48.154674Z",
+    "alert_id": "0c2b6e9f-a6c9-4c08-8df0-ca358f4b8cbb",
+    "ingested_at": "2026-09-01T06:26:11.505947Z",
     "source": "sigma_synthetic",
     "source_alert_id": "sig-0004",
     "rule_name": "DNS Query to Known DGA-Pattern Domain",
@@ -339,8 +339,8 @@
     }
   },
   {
-    "alert_id": "876d9dea-364a-42ae-9a20-f542ab90e93a",
-    "ingested_at": "2026-08-30T08:39:48.154803Z",
+    "alert_id": "345f2be0-ac02-4b47-9dba-37c57e10de33",
+    "ingested_at": "2026-09-01T06:26:11.506085Z",
     "source": "edr_synthetic",
     "source_alert_id": "edr-9001",
     "rule_name": "Credential Dumping Tool Signature Match",
@@ -375,8 +375,8 @@
     }
   },
   {
-    "alert_id": "b5199918-9e79-4ecd-8aa5-a6f974d78ed2",
-    "ingested_at": "2026-08-30T08:39:48.154692Z",
+    "alert_id": "7fb45e61-ccab-4ccd-937d-9149590ea1c4",
+    "ingested_at": "2026-09-01T06:26:11.505973Z",
     "source": "sigma_synthetic",
     "source_alert_id": "sig-0006",
     "rule_name": "SMB Lateral Movement Pattern",
@@ -408,8 +408,8 @@
     }
   },
   {
-    "alert_id": "46825e7d-8e78-4783-b7e0-b0f4e79b3c5d",
-    "ingested_at": "2026-08-30T08:39:48.154700Z",
+    "alert_id": "2da49bc5-9d9e-4306-9a3a-f62188add023",
+    "ingested_at": "2026-09-01T06:26:11.505981Z",
     "source": "sigma_synthetic",
     "source_alert_id": "sig-0007",
     "rule_name": "Scheduled Task Created via schtasks.exe",
@@ -441,8 +441,8 @@
     }
   },
   {
-    "alert_id": "1b7740c0-f373-4f19-9191-530dab4dc95d",
-    "ingested_at": "2026-08-30T08:39:48.154820Z",
+    "alert_id": "bab1ec94-728a-4b86-aed9-e696edce9498",
+    "ingested_at": "2026-09-01T06:26:11.506102Z",
     "source": "edr_synthetic",
     "source_alert_id": "edr-9002",
     "rule_name": "Reverse Shell Network Behavior",
@@ -477,8 +477,8 @@
     }
   },
   {
-    "alert_id": "7768ad00-00b1-4ea6-a048-e1c928da0a3d",
-    "ingested_at": "2026-08-30T08:39:48.154865Z",
+    "alert_id": "14a17c29-d47b-46a0-9bbb-997a726b461a",
+    "ingested_at": "2026-09-01T06:26:11.506147Z",
     "source": "edr_synthetic",
     "source_alert_id": "edr-9006",
     "rule_name": "Archive Utility Compressing Large Directory",
@@ -513,8 +513,8 @@
     }
   },
   {
-    "alert_id": "3d62d1c2-c1c6-4ac6-afe6-1d7eb6a359ac",
-    "ingested_at": "2026-08-30T08:39:48.154716Z",
+    "alert_id": "26994573-7078-4361-aa77-4e6fdfad560b",
+    "ingested_at": "2026-09-01T06:26:11.505997Z",
     "source": "sigma_synthetic",
     "source_alert_id": "sig-0009",
     "rule_name": "Large Outbound Data Transfer",

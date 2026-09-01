@@ -22,7 +22,7 @@
     "dst_ip": "10.20.4.10",
     "dest_port": null,
     "user": null,
-    "computer": "WKS-EU-0231",
+    "computer": null,
     "mitre": "T1046"
   },
   {
