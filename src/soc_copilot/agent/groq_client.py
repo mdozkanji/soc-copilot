@@ -5,8 +5,18 @@ LLMClient interface from llm_types.py.
 Using Groq's free tier (https://console.groq.com, no credit card required)
 instead of a paid Anthropic key so this project runs as a demo without
 requiring anyone -- including a reviewer cloning the repo -- to pay for API
-access. Model: llama-3.3-70b-versatile, which Groq's own docs list as
-supporting tool use (console.groq.com/docs/model/llama-3.3-70b-versatile).
+access. Model: openai/gpt-oss-120b, OpenAI's own open-weight model hosted
+on Groq's infrastructure, documented by Groq specifically as "designed for
+high-capability agentic use" (console.groq.com/docs/model/openai/gpt-oss-120b).
+
+NOTE on model choice: Groq's free-tier catalog changes frequently -- this
+project's original choice (llama-3.3-70b-versatile) was deprecated and
+returning 404 within about two weeks of being picked, which is what
+prompted switching to gpt-oss-120b and, more importantly, adding the
+GROQ_MODEL override below. Don't hardcode a model as a silent assumption;
+if this one gets deprecated too, set GROQ_MODEL in .env rather than
+waiting on a code change -- see console.groq.com/docs/models for the
+current list.
 
 Built in the same style as every other HTTP client in this project:
 injectable httpx.Client, explicit retry/backoff, no SDK -- so the actual
@@ -28,7 +38,7 @@ import httpx
 from soc_copilot.agent.llm_types import LLMResponse, ToolCall, Turn
 
 BASE_URL = "https://api.groq.com/openai/v1"
-DEFAULT_MODEL = "llama-3.3-70b-versatile"
+DEFAULT_MODEL = "openai/gpt-oss-120b"
 
 _RETRYABLE_STATUS_CODES = {429, 500, 502, 503}
 _MAX_RETRIES = 3
@@ -61,6 +71,9 @@ class GroqClient:
             raise RuntimeError(
                 "GROQ_API_KEY is not set. Get a free key (no credit card required) at https://console.groq.com/keys"
             )
+        model = os.environ.get("GROQ_MODEL")
+        if model:
+            kwargs.setdefault("model", model)
         return cls(api_key=api_key, **kwargs)
 
     def create_message(self, *, system: str, history: list[Turn], tools: list[dict[str, Any]]) -> LLMResponse:

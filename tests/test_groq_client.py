@@ -182,3 +182,21 @@ def test_from_env_requires_api_key(monkeypatch):
     monkeypatch.delenv("GROQ_API_KEY", raising=False)
     with pytest.raises(RuntimeError, match="GROQ_API_KEY"):
         GroqClient.from_env()
+
+
+def test_from_env_uses_default_model_when_groq_model_unset(monkeypatch):
+    monkeypatch.setenv("GROQ_API_KEY", "test-key")
+    monkeypatch.delenv("GROQ_MODEL", raising=False)
+    from soc_copilot.agent.groq_client import DEFAULT_MODEL
+
+    client = GroqClient.from_env()
+    assert client._model == DEFAULT_MODEL
+
+
+def test_from_env_respects_groq_model_override(monkeypatch):
+    """If Groq deprecates the default model again, this is the escape
+    hatch: set GROQ_MODEL and keep running without a code change."""
+    monkeypatch.setenv("GROQ_API_KEY", "test-key")
+    monkeypatch.setenv("GROQ_MODEL", "some-future-model")
+    client = GroqClient.from_env()
+    assert client._model == "some-future-model"
