@@ -1,20 +1,20 @@
 """
 The agent loop.
 
-Design: the loop alternates between calling Claude and executing whatever
-tools it asks for, feeding results back as the next message, exactly like
-any tool-use agent. The one deliberate choice worth explaining is how it
-*ends*: rather than asking Claude to end its turn with plain text and
+Design: the loop alternates between calling the LLM and executing whatever
+tools it asks for, feeding results back as the next turn, exactly like any
+tool-use agent. The one deliberate choice worth explaining is how it
+*ends*: rather than asking the model to end its turn with plain text and
 trying to parse a verdict out of that, submit_verdict is a tool like any
-other, and the loop's termination condition is simply "Claude called
+other, and the loop's termination condition is simply "the model called
 submit_verdict, and its input validated against our Verdict schema."
 
 Why this matters: it means structured output isn't a separate mechanism
 bolted on after the investigation -- it's the same tool-calling protocol
 already being used to gather evidence, so there's exactly one code path to
 get right, not two. It also means an ill-formed verdict doesn't crash the
-loop: it comes back to Claude as a tool_result with is_error=True, and
-Claude gets a chance to correct it -- see test_agent_loop.py for a case
+loop: it comes back to the model as a tool result with is_error=True, and
+the model gets a chance to correct it -- see test_agent_loop.py for a case
 that exercises exactly this.
 
 Every tool dispatch is wrapped so a single failing tool (a down enrichment
@@ -22,6 +22,10 @@ API, a malformed input) becomes a {"error": ...} tool result the agent can
 reason about and route around, never an exception that kills the whole
 investigation. Same principle as enrich/service.py's per-source graceful
 degradation in Week 2, applied one layer up.
+
+This loop works entirely in terms of llm_types.Turn/LLMResponse -- it has
+no idea whether it's talking to Groq, Anthropic, or anything else. See
+llm_types.py's module docstring for why that separation was added.
 """
 
 from __future__ import annotations
@@ -32,7 +36,7 @@ from uuid import UUID
 
 from pydantic import ValidationError
 
-from soc_copilot.agent.claude_client import ClaudeClient
+from soc_copilot.agent.llm_types import LLMClient, ToolResult, Turn
 from soc_copilot.agent.models import AgentResult, AgentTraceEntry, ToolCallRecord, Verdict
 from soc_copilot.agent.tools import TOOL_DEFINITIONS
 from soc_copilot.correlate.models import Case
@@ -60,71 +64,61 @@ class AgentDidNotConverge(RuntimeError):
 class SocAnalystAgent:
     def __init__(
         self,
-        claude_client: ClaudeClient,
+        llm_client: LLMClient,
         enrichment_service: EnrichmentService,
         asset_lookup: Callable[[str], dict],
         max_iterations: int = DEFAULT_MAX_ITERATIONS,
     ):
-        self._client = claude_client
+        self._client = llm_client
         self._enrichment = enrichment_service
         self._asset_lookup = asset_lookup
         self._max_iterations = max_iterations
 
     def investigate(self, case: Case, alerts_by_id: dict[UUID, Alert]) -> AgentResult:
         case_alerts = [alerts_by_id[aid] for aid in case.alert_ids]
-        messages: list[dict] = [{"role": "user", "content": _build_case_prompt(case, case_alerts)}]
+        history: list[Turn] = [Turn(role="user", text=_build_case_prompt(case, case_alerts))]
         trace: list[AgentTraceEntry] = []
 
         for iteration in range(1, self._max_iterations + 1):
-            response = self._client.create_message(system=SYSTEM_PROMPT, messages=messages, tools=TOOL_DEFINITIONS)
-            content = response.get("content", [])
-            messages.append({"role": "assistant", "content": content})
+            response = self._client.create_message(system=SYSTEM_PROMPT, history=history, tools=TOOL_DEFINITIONS)
+            history.append(Turn(role="assistant", text=response.text, tool_calls=response.tool_calls))
 
-            text_blocks = [b["text"] for b in content if b.get("type") == "text" and b.get("text")]
-            tool_use_blocks = [b for b in content if b.get("type") == "tool_use"]
+            entry = AgentTraceEntry(iteration=iteration, assistant_text=response.text)
 
-            entry = AgentTraceEntry(iteration=iteration, assistant_text="\n".join(text_blocks) or None)
-
-            if not tool_use_blocks:
+            if not response.tool_calls:
                 trace.append(entry)
-                messages.append(
-                    {
-                        "role": "user",
-                        "content": "You must call the submit_verdict tool to provide your final structured "
+                history.append(
+                    Turn(
+                        role="user",
+                        text="You must call the submit_verdict tool to provide your final structured "
                         "conclusion. Please do so now, using the evidence you've already gathered.",
-                    }
+                    )
                 )
                 continue
 
-            tool_results: list[dict] = []
+            tool_results: list[ToolResult] = []
             verdict: Optional[Verdict] = None
 
-            for block in tool_use_blocks:
-                name = block["name"]
-                tool_input = block.get("input", {}) or {}
-
-                if name == "submit_verdict":
+            for call in response.tool_calls:
+                if call.name == "submit_verdict":
                     try:
-                        verdict = Verdict.model_validate(tool_input)
+                        verdict = Verdict.model_validate(call.input)
                     except ValidationError as e:
                         tool_results.append(
-                            {
-                                "type": "tool_result",
-                                "tool_use_id": block["id"],
-                                "content": f"Your submitted verdict was invalid: {e}. Please correct it and call submit_verdict again.",
-                                "is_error": True,
-                            }
+                            ToolResult(
+                                tool_call_id=call.id,
+                                content=f"Your submitted verdict was invalid: {e}. Please correct it and call submit_verdict again.",
+                                is_error=True,
+                            )
                         )
-                        entry.tool_calls.append(ToolCallRecord(name=name, input=tool_input, result={"error": "validation failed"}))
+                        entry.tool_calls.append(ToolCallRecord(name=call.name, input=call.input, result={"error": "validation failed"}))
                         continue
-                    entry.tool_calls.append(ToolCallRecord(name=name, input=tool_input, result={"accepted": True}))
+                    entry.tool_calls.append(ToolCallRecord(name=call.name, input=call.input, result={"accepted": True}))
                     continue
 
-                result = self._dispatch_tool(name, tool_input)
-                entry.tool_calls.append(ToolCallRecord(name=name, input=tool_input, result=result))
-                tool_results.append(
-                    {"type": "tool_result", "tool_use_id": block["id"], "content": json.dumps(result, default=str)}
-                )
+                result = self._dispatch_tool(call.name, call.input)
+                entry.tool_calls.append(ToolCallRecord(name=call.name, input=call.input, result=result))
+                tool_results.append(ToolResult(tool_call_id=call.id, content=json.dumps(result, default=str)))
 
             trace.append(entry)
 
@@ -132,7 +126,7 @@ class SocAnalystAgent:
                 return AgentResult(case_id=case.case_id, verdict=verdict, trace=trace, iterations=iteration)
 
             if tool_results:
-                messages.append({"role": "user", "content": tool_results})
+                history.append(Turn(role="tool_results", tool_results=tool_results))
 
         raise AgentDidNotConverge(
             f"Agent did not submit a valid verdict within {self._max_iterations} iterations for case {case.case_id}"

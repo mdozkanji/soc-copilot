@@ -1,16 +1,21 @@
 """
-Tool definitions in Claude's tool-use format (name / description / JSON
-input_schema). These are sent verbatim to the Anthropic API on every
-request in the agent loop.
+Tool definitions (name / description / JSON input_schema) shared across
+whatever LLM provider is in use. This shape is intentionally close to
+plain JSON Schema rather than any one vendor's wire format -- each
+provider-specific client (see groq_client.py) is responsible for
+translating it into whatever shape its own API actually expects (e.g.
+Groq wraps each entry in {"type": "function", "function": {...,
+"parameters": ...}}).
 
-submit_verdict is a tool like any other, not a special case in the API --
-but it's the mechanism the whole structured-output design relies on: the
-agent loop (loop.py) treats a call to submit_verdict as the signal to stop
-investigating, and its `input` (validated against agent.models.Verdict) IS
-the final answer. This is a deliberate alternative to asking the model to
-emit JSON in free text and hoping it parses -- tool-use input is
-schema-constrained by the API itself, and it lets a single mechanism
-(tool_use blocks) drive both "gather more evidence" and "conclude."
+submit_verdict is a tool like any other, not a special case at the API
+level -- but it's the mechanism the whole structured-output design relies
+on: the agent loop (loop.py) treats a call to submit_verdict as the signal
+to stop investigating, and its `input` (validated against
+agent.models.Verdict) IS the final answer. This is a deliberate
+alternative to asking the model to emit JSON in free text and hoping it
+parses -- tool-call input is schema-constrained by the provider's API
+itself, and it lets a single mechanism (tool calls) drive both "gather
+more evidence" and "conclude."
 """
 
 from __future__ import annotations

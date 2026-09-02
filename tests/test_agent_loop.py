@@ -1,9 +1,9 @@
 from datetime import datetime, timezone
-from uuid import uuid4
 
 import pytest
 
 from soc_copilot.agent.assets import make_asset_lookup
+from soc_copilot.agent.llm_types import LLMResponse, ToolCall
 from soc_copilot.agent.loop import AgentDidNotConverge, SocAnalystAgent
 from soc_copilot.agent.models import RecommendedAction
 from soc_copilot.correlate.models import Case
@@ -11,28 +11,21 @@ from soc_copilot.enrich.service import EnrichmentService
 from soc_copilot.ingest.schema import Alert, AlertSource, Severity
 
 
-class FakeClaudeClient:
-    """Returns scripted responses in order; records every call for
-    inspection, so tests can assert on the exact message history the loop
-    builds, not just the final result."""
+class FakeLLMClient:
+    """Returns scripted LLMResponse objects in order; records every call
+    for inspection. Working against the normalized llm_types interface
+    (rather than any provider's raw wire format) means these tests exercise
+    the loop's actual logic, not a specific vendor's JSON shape."""
 
-    def __init__(self, responses: list[dict]):
+    def __init__(self, responses: list[LLMResponse]):
         self._responses = list(responses)
         self.calls: list[dict] = []
 
-    def create_message(self, *, system, messages, tools, max_tokens=2048):
-        self.calls.append({"system": system, "messages": [dict(m) for m in messages], "tools": tools})
+    def create_message(self, *, system, history, tools):
+        self.calls.append({"system": system, "history": list(history), "tools": tools})
         if not self._responses:
-            raise AssertionError("FakeClaudeClient ran out of scripted responses")
+            raise AssertionError("FakeLLMClient ran out of scripted responses")
         return self._responses.pop(0)
-
-
-def _text_block(text: str) -> dict:
-    return {"type": "text", "text": text}
-
-
-def _tool_use_block(tool_id: str, name: str, input_: dict) -> dict:
-    return {"type": "tool_use", "id": tool_id, "name": name, "input": input_}
 
 
 def _make_case_and_alert() -> tuple[Case, dict]:
@@ -62,7 +55,7 @@ def _make_case_and_alert() -> tuple[Case, dict]:
 
 def _agent(fake_client, enrichment=None, asset_inventory=None, max_iterations=8):
     return SocAnalystAgent(
-        claude_client=fake_client,
+        llm_client=fake_client,
         enrichment_service=enrichment or EnrichmentService(),
         asset_lookup=make_asset_lookup(asset_inventory or {}),
         max_iterations=max_iterations,
@@ -85,20 +78,22 @@ VALID_VERDICT_INPUT = {
 
 def test_happy_path_investigates_then_converges_on_verdict():
     case, alerts_by_id = _make_case_and_alert()
-    fake = FakeClaudeClient(
+    fake = FakeLLMClient(
         [
-            {
-                "content": [
-                    _text_block("Let me check this IP and the host's context."),
-                    _tool_use_block("t1", "enrich_ip", {"ip": "185.220.101.47"}),
-                    _tool_use_block("t2", "get_asset_context", {"hostname": "WKS-EU-0231"}),
+            LLMResponse(
+                text="Let me check this IP and the host's context.",
+                tool_calls=[
+                    ToolCall(id="t1", name="enrich_ip", input={"ip": "185.220.101.47"}),
+                    ToolCall(id="t2", name="get_asset_context", input={"hostname": "WKS-EU-0231"}),
                 ],
-                "stop_reason": "tool_use",
-            },
-            {"content": [_tool_use_block("t3", "submit_verdict", VALID_VERDICT_INPUT)], "stop_reason": "tool_use"},
+            ),
+            LLMResponse(tool_calls=[ToolCall(id="t3", name="submit_verdict", input=VALID_VERDICT_INPUT)]),
         ]
     )
-    agent = _agent(fake, asset_inventory={"WKS-EU-0231": {"owner": "jsmith", "criticality": "high", "department": "IT", "asset_type": "workstation"}})
+    agent = _agent(
+        fake,
+        asset_inventory={"WKS-EU-0231": {"owner": "jsmith", "criticality": "high", "department": "IT", "asset_type": "workstation"}},
+    )
 
     result = agent.investigate(case, alerts_by_id)
 
@@ -110,28 +105,25 @@ def test_happy_path_investigates_then_converges_on_verdict():
     assert result.trace[0].assistant_text == "Let me check this IP and the host's context."
 
 
-def test_second_call_includes_properly_formed_tool_results():
-    """Verifies the loop actually implements the Anthropic multi-turn
-    tool-use protocol correctly: the assistant's own content goes back
-    verbatim, and each tool_use gets a matching tool_result keyed by the
-    same tool_use_id."""
+def test_history_accumulates_correctly_shaped_turns():
+    """Verifies the loop builds a coherent normalized conversation: the
+    assistant's tool calls go in, and a matching tool_results turn comes
+    back before the next LLM call."""
     case, alerts_by_id = _make_case_and_alert()
-    fake = FakeClaudeClient(
+    fake = FakeLLMClient(
         [
-            {"content": [_tool_use_block("abc123", "enrich_ip", {"ip": "185.220.101.47"})], "stop_reason": "tool_use"},
-            {"content": [_tool_use_block("t2", "submit_verdict", VALID_VERDICT_INPUT)], "stop_reason": "tool_use"},
+            LLMResponse(tool_calls=[ToolCall(id="abc123", name="enrich_ip", input={"ip": "185.220.101.47"})]),
+            LLMResponse(tool_calls=[ToolCall(id="t2", name="submit_verdict", input=VALID_VERDICT_INPUT)]),
         ]
     )
     agent = _agent(fake)
     agent.investigate(case, alerts_by_id)
 
-    second_call_messages = fake.calls[1]["messages"]
-    assert second_call_messages[1]["role"] == "assistant"
-    assert second_call_messages[1]["content"][0]["id"] == "abc123"
-    assert second_call_messages[2]["role"] == "user"
-    tool_result = second_call_messages[2]["content"][0]
-    assert tool_result["type"] == "tool_result"
-    assert tool_result["tool_use_id"] == "abc123"
+    second_call_history = fake.calls[1]["history"]
+    assert second_call_history[1].role == "assistant"
+    assert second_call_history[1].tool_calls[0].id == "abc123"
+    assert second_call_history[2].role == "tool_results"
+    assert second_call_history[2].tool_results[0].tool_call_id == "abc123"
 
 
 # --------------------------------------------------------------------------
@@ -140,20 +132,19 @@ def test_second_call_includes_properly_formed_tool_results():
 
 def test_failing_tool_becomes_an_error_result_not_a_crash():
     case, alerts_by_id = _make_case_and_alert()
-    fake = FakeClaudeClient(
+    fake = FakeLLMClient(
         [
             # enrich_hash with no VT configured -> EnrichmentService raises RuntimeError
-            {"content": [_tool_use_block("t1", "enrich_hash", {"sha256": "a" * 64})], "stop_reason": "tool_use"},
-            {
-                "content": [
-                    _tool_use_block(
-                        "t2",
-                        "submit_verdict",
-                        {**VALID_VERDICT_INPUT, "confidence": 20, "reasoning": "Hash enrichment was unavailable; low confidence."},
+            LLMResponse(tool_calls=[ToolCall(id="t1", name="enrich_hash", input={"sha256": "a" * 64})]),
+            LLMResponse(
+                tool_calls=[
+                    ToolCall(
+                        id="t2",
+                        name="submit_verdict",
+                        input={**VALID_VERDICT_INPUT, "confidence": 20, "reasoning": "Hash enrichment was unavailable; low confidence."},
                     )
-                ],
-                "stop_reason": "tool_use",
-            },
+                ]
+            ),
         ]
     )
     agent = _agent(fake, enrichment=EnrichmentService())  # no VT/AbuseIPDB clients configured
@@ -167,10 +158,10 @@ def test_failing_tool_becomes_an_error_result_not_a_crash():
 
 def test_unknown_tool_name_becomes_an_error_result_not_a_crash():
     case, alerts_by_id = _make_case_and_alert()
-    fake = FakeClaudeClient(
+    fake = FakeLLMClient(
         [
-            {"content": [_tool_use_block("t1", "some_tool_that_does_not_exist", {})], "stop_reason": "tool_use"},
-            {"content": [_tool_use_block("t2", "submit_verdict", VALID_VERDICT_INPUT)], "stop_reason": "tool_use"},
+            LLMResponse(tool_calls=[ToolCall(id="t1", name="some_tool_that_does_not_exist", input={})]),
+            LLMResponse(tool_calls=[ToolCall(id="t2", name="submit_verdict", input=VALID_VERDICT_INPUT)]),
         ]
     )
     agent = _agent(fake)
@@ -181,10 +172,10 @@ def test_unknown_tool_name_becomes_an_error_result_not_a_crash():
 def test_malformed_verdict_is_rejected_and_agent_gets_a_chance_to_retry():
     case, alerts_by_id = _make_case_and_alert()
     bad_verdict = {**VALID_VERDICT_INPUT, "confidence": 150}  # out of the 0-100 range
-    fake = FakeClaudeClient(
+    fake = FakeLLMClient(
         [
-            {"content": [_tool_use_block("t1", "submit_verdict", bad_verdict)], "stop_reason": "tool_use"},
-            {"content": [_tool_use_block("t2", "submit_verdict", VALID_VERDICT_INPUT)], "stop_reason": "tool_use"},
+            LLMResponse(tool_calls=[ToolCall(id="t1", name="submit_verdict", input=bad_verdict)]),
+            LLMResponse(tool_calls=[ToolCall(id="t2", name="submit_verdict", input=VALID_VERDICT_INPUT)]),
         ]
     )
     agent = _agent(fake)
@@ -192,10 +183,9 @@ def test_malformed_verdict_is_rejected_and_agent_gets_a_chance_to_retry():
 
     assert result.iterations == 2
     assert result.verdict.confidence == 90  # the corrected, valid submission
-    # the first (rejected) attempt should be reflected in the second API call's messages
-    second_call_messages = fake.calls[1]["messages"]
-    tool_result = second_call_messages[2]["content"][0]
-    assert tool_result.get("is_error") is True
+    second_call_history = fake.calls[1]["history"]
+    tool_result = second_call_history[2].tool_results[0]
+    assert tool_result.is_error is True
 
 
 # --------------------------------------------------------------------------
@@ -204,12 +194,7 @@ def test_malformed_verdict_is_rejected_and_agent_gets_a_chance_to_retry():
 
 def test_raises_if_agent_never_calls_submit_verdict():
     case, alerts_by_id = _make_case_and_alert()
-    fake = FakeClaudeClient(
-        [
-            {"content": [_text_block("I'm thinking about it.")], "stop_reason": "end_turn"},
-            {"content": [_text_block("Still thinking.")], "stop_reason": "end_turn"},
-        ]
-    )
+    fake = FakeLLMClient([LLMResponse(text="I'm thinking about it."), LLMResponse(text="Still thinking.")])
     agent = _agent(fake, max_iterations=2)
 
     with pytest.raises(AgentDidNotConverge, match="correlated-case-001"):
@@ -218,15 +203,15 @@ def test_raises_if_agent_never_calls_submit_verdict():
 
 def test_nudge_message_is_sent_when_agent_responds_with_no_tool_use():
     case, alerts_by_id = _make_case_and_alert()
-    fake = FakeClaudeClient(
+    fake = FakeLLMClient(
         [
-            {"content": [_text_block("Hmm.")], "stop_reason": "end_turn"},
-            {"content": [_tool_use_block("t1", "submit_verdict", VALID_VERDICT_INPUT)], "stop_reason": "tool_use"},
+            LLMResponse(text="Hmm."),
+            LLMResponse(tool_calls=[ToolCall(id="t1", name="submit_verdict", input=VALID_VERDICT_INPUT)]),
         ]
     )
     agent = _agent(fake, max_iterations=3)
     result = agent.investigate(case, alerts_by_id)
 
     assert result.iterations == 2
-    second_call_messages = fake.calls[1]["messages"]
-    assert "submit_verdict" in second_call_messages[2]["content"]
+    second_call_history = fake.calls[1]["history"]
+    assert "submit_verdict" in second_call_history[2].text

@@ -5,10 +5,11 @@ Usage:
     python -m soc_copilot.agent.cli                      # picks the largest case
     python -m soc_copilot.agent.cli --source-id sig-0001  # picks the case containing this alert
 
-Requires ANTHROPIC_API_KEY. Enrichment API keys (VT_API_KEY /
-ABUSEIPDB_API_KEY) are optional -- if neither is set, enrich_ip/enrich_hash
-tool calls will come back as errors, which the agent is expected to reason
-about honestly rather than crash on (see loop.py).
+Requires GROQ_API_KEY -- free, no credit card required: https://console.groq.com/keys.
+Enrichment API keys (VT_API_KEY / ABUSEIPDB_API_KEY) are optional -- if
+neither is set, enrich_ip/enrich_hash tool calls will come back as errors,
+which the agent is expected to reason about honestly rather than crash on
+(see loop.py).
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ import json
 from pathlib import Path
 
 from soc_copilot.agent.assets import load_asset_inventory, make_asset_lookup
-from soc_copilot.agent.claude_client import ClaudeClient
+from soc_copilot.agent.groq_client import GroqClient
 from soc_copilot.agent.loop import AgentDidNotConverge, SocAnalystAgent
 from soc_copilot.correlate.cluster import correlate
 from soc_copilot.enrich.service import EnrichmentService
@@ -61,8 +62,8 @@ def main() -> None:
         enrichment = EnrichmentService()
 
     asset_lookup = make_asset_lookup(load_asset_inventory())
-    claude = ClaudeClient.from_env()
-    agent = SocAnalystAgent(claude_client=claude, enrichment_service=enrichment, asset_lookup=asset_lookup)
+    llm_client = GroqClient.from_env()
+    agent = SocAnalystAgent(llm_client=llm_client, enrichment_service=enrichment, asset_lookup=asset_lookup)
 
     try:
         result = agent.investigate(case, alerts_by_id)

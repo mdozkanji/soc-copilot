@@ -42,6 +42,7 @@ soc-copilot/
 - **Teach**: why correlation matters more than any single alert, kill-chain / MITRE ATT&CK tactic ordering as a correlation signal, false-merge vs. false-split tradeoffs.
 
 ## Week 4 — Agent core (tool-calling)
+*(Follow-up note: built as planned below using Claude/Anthropic, then switched to Groq's free tier the same week to avoid requiring paid API access for a portfolio demo -- see `devlog/0005-*.md`. The plan is left as originally written; the pivot is documented where it happened, not retrofitted here.)*
 - Define the tool schema for Claude: `enrich_ip`, `enrich_hash`, `get_asset_context` (mocked inventory), each with strict JSON schemas.
 - Implement the agent loop: alert/case in → Claude decides which tools to call → tool results fed back → repeat until Claude emits a final structured verdict (Pydantic model: severity, confidence, MITRE technique(s), recommended action, reasoning trace).
 - **Deliverable**: `src/agent/`, one working end-to-end trace on a real case from Week 3, logged verbosely so you can see every tool call.
