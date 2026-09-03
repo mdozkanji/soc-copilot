@@ -4,7 +4,7 @@ An AI-powered SOC alert triage & investigation copilot: a tool-calling LLM agent
 
 Built as a portfolio/research project — see [`docs/PROJECT_OVERVIEW.md`](docs/PROJECT_OVERVIEW.md) for the full rationale (problem, approach, why it matters, competitive landscape) and [`docs/BUILD_PLAN.md`](docs/BUILD_PLAN.md) for the week-by-week plan. Progress is tracked as we go in [`devlog/`](devlog/), written during each build session rather than reconstructed afterward.
 
-## Status: Week 4 — Agent core ✅ code complete, live reasoning pending your run
+## Status: Week 4 — Agent core ✅ code complete, live verification **deferred**
 
 - [x] Repo scaffold, `pyproject.toml`, package layout
 - [x] Internal `Alert` schema (`src/soc_copilot/ingest/schema.py`)
@@ -16,9 +16,9 @@ Built as a portfolio/research project — see [`docs/PROJECT_OVERVIEW.md`](docs/
 - [x] Live-verified against real VT/AbuseIPDB APIs
 - [x] Entity-based correlation engine with time-windowed connected-components clustering (`src/soc_copilot/correlate/`)
 - [x] Cluster-purity tests against real ground truth (`eval/labels.json`)
-- [x] Claude tool-calling agent loop: `enrich_ip`, `enrich_hash`, `get_asset_context`, `submit_verdict` (`src/soc_copilot/agent/`) -- **now running on Groq's free tier (Llama 3.3 70B), not Anthropic, since Week 4 follow-up (see `devlog/0005-...md`)**
-- [x] Unit tests, all passing (96/96, `tests/`)
-- [ ] Live agent run against the real Groq API — **pending, needs to be run locally**
+- [x] Tool-calling agent loop: `enrich_ip`, `enrich_hash`, `get_asset_context`, `submit_verdict` (`src/soc_copilot/agent/`), provider-agnostic (`llm_types.py`), currently wired to Groq's free tier (`groq_client.py`)
+- [x] Unit tests, all passing (102/102, `tests/`)
+- [ ] **Live agent run against the real Groq API — blocked, not yet achieved.** Four attempts (model deprecation, missing `max_tokens`, `gpt-oss` reasoning-token overhead) each fixed a real, distinct problem, but the free tier's 8,000 TPM ceiling is still being exceeded. Paused rather than continuing to guess blind with no way to inspect the live API from this environment. Full writeup: `devlog/0009-pausing-live-agent-verification.md`.
 - [ ] Week 5: RAG over threat intel (MITRE ATT&CK)
 
 ## Quickstart
