@@ -78,6 +78,24 @@ def test_tools_are_wrapped_in_function_type_with_parameters_key():
     )
 
 
+def test_request_includes_a_bounded_max_tokens():
+    """Regression test for a real bug: max_tokens was dropped entirely
+    during the Anthropic-to-Groq port (Anthropic requires it; Groq makes it
+    optional), so Groq silently applied its own large default completion
+    budget and the very first live request blew through the free tier's
+    8,000 TPM limit. This must always be present and bounded."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        assert "max_tokens" in body
+        assert isinstance(body["max_tokens"], int)
+        assert body["max_tokens"] <= 4096  # sanity bound, not the exact default
+        return httpx.Response(200, json=TEXT_RESPONSE)
+
+    client = _client_with_handler(handler)
+    client.create_message(system="s", history=[Turn(role="user", text="hi")], tools=[])
+
+
 def test_assistant_tool_calls_are_encoded_as_json_string_arguments():
     def handler(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
@@ -200,3 +218,10 @@ def test_from_env_respects_groq_model_override(monkeypatch):
     monkeypatch.setenv("GROQ_MODEL", "some-future-model")
     client = GroqClient.from_env()
     assert client._model == "some-future-model"
+
+
+def test_from_env_respects_groq_max_tokens_override(monkeypatch):
+    monkeypatch.setenv("GROQ_API_KEY", "test-key")
+    monkeypatch.setenv("GROQ_MAX_TOKENS", "512")
+    client = GroqClient.from_env()
+    assert client._max_tokens == 512
