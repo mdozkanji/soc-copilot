@@ -9,6 +9,7 @@ from soc_copilot.agent.models import RecommendedAction
 from soc_copilot.correlate.models import Case
 from soc_copilot.enrich.service import EnrichmentService
 from soc_copilot.ingest.schema import Alert, AlertSource, Severity
+from soc_copilot.rag.retriever import RetrievedTechnique
 
 
 class FakeLLMClient:
@@ -53,11 +54,27 @@ def _make_case_and_alert() -> tuple[Case, dict]:
     return case, {alert.alert_id: alert}
 
 
-def _agent(fake_client, enrichment=None, asset_inventory=None, max_iterations=8):
+class StubRetriever:
+    """Returns a fixed, scripted result list -- the RAG equivalent of
+    FakeLLMClient, so agent-loop tests don't depend on real MITRE data or
+    TF-IDF scoring behavior, just on whether the loop dispatches and
+    records the call correctly."""
+
+    def __init__(self, results: list[RetrievedTechnique] | None = None):
+        self._results = results or []
+        self.queries: list[tuple[str, int]] = []
+
+    def search(self, query: str, k: int = 5) -> list[RetrievedTechnique]:
+        self.queries.append((query, k))
+        return self._results
+
+
+def _agent(fake_client, enrichment=None, asset_inventory=None, retriever=None, max_iterations=8):
     return SocAnalystAgent(
         llm_client=fake_client,
         enrichment_service=enrichment or EnrichmentService(),
         asset_lookup=make_asset_lookup(asset_inventory or {}),
+        retriever=retriever or StubRetriever(),
         max_iterations=max_iterations,
     )
 
@@ -167,6 +184,24 @@ def test_unknown_tool_name_becomes_an_error_result_not_a_crash():
     agent = _agent(fake)
     result = agent.investigate(case, alerts_by_id)
     assert "Unknown tool" in result.trace[0].tool_calls[0].result["error"]
+
+
+def test_search_mitre_dispatches_to_the_retriever_and_records_results():
+    case, alerts_by_id = _make_case_and_alert()
+    stub_results = [RetrievedTechnique(technique_id="T1059.001", name="PowerShell", tactics=["execution"], description="...", score=0.9)]
+    retriever = StubRetriever(results=stub_results)
+    fake = FakeLLMClient(
+        [
+            LLMResponse(tool_calls=[ToolCall(id="t1", name="search_mitre", input={"query": "encoded powershell", "k": 3})]),
+            LLMResponse(tool_calls=[ToolCall(id="t2", name="submit_verdict", input=VALID_VERDICT_INPUT)]),
+        ]
+    )
+    agent = _agent(fake, retriever=retriever)
+    result = agent.investigate(case, alerts_by_id)
+
+    assert retriever.queries == [("encoded powershell", 3)]
+    tool_result = result.trace[0].tool_calls[0].result
+    assert tool_result["results"][0]["technique_id"] == "T1059.001"
 
 
 def test_malformed_verdict_is_rejected_and_agent_gets_a_chance_to_retry():

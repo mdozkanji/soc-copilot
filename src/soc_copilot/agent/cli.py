@@ -24,6 +24,7 @@ from soc_copilot.agent.loop import AgentDidNotConverge, SocAnalystAgent
 from soc_copilot.correlate.cluster import correlate
 from soc_copilot.enrich.service import EnrichmentService
 from soc_copilot.ingest.schema import Alert
+from soc_copilot.rag.service import default_retriever
 
 try:
     from dotenv import load_dotenv
@@ -63,7 +64,10 @@ def main() -> None:
 
     asset_lookup = make_asset_lookup(load_asset_inventory())
     llm_client = GroqClient.from_env()
-    agent = SocAnalystAgent(llm_client=llm_client, enrichment_service=enrichment, asset_lookup=asset_lookup)
+    retriever = default_retriever()
+    agent = SocAnalystAgent(
+        llm_client=llm_client, enrichment_service=enrichment, asset_lookup=asset_lookup, retriever=retriever
+    )
 
     try:
         result = agent.investigate(case, alerts_by_id)

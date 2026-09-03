@@ -8,11 +8,21 @@ dependencies = [
     "httpx>=0.27",
     "python-dotenv>=1.0",
     "networkx>=3.2",
+    "scikit-learn>=1.4",
+    "chromadb>=0.5",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
+]
+embeddings = [
+    # Only needed for ChromaRetriever's real embedding backend
+    # (rag/chroma_retriever.py). Kept out of the base install since
+    # sentence-transformers downloads model weights from huggingface.co on
+    # first use -- fine on your machine, not reachable from the sandbox
+    # this project was built in. Install with: pip install -e ".[embeddings]"
+    "sentence-transformers>=3.0",
 ]
 
 [tool.pytest.ini_options]

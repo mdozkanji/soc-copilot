@@ -42,6 +42,7 @@ from soc_copilot.agent.tools import TOOL_DEFINITIONS
 from soc_copilot.correlate.models import Case
 from soc_copilot.enrich.service import EnrichmentService
 from soc_copilot.ingest.schema import Alert
+from soc_copilot.rag.retriever import Retriever
 
 DEFAULT_MAX_ITERATIONS = 8
 
@@ -54,6 +55,7 @@ Rules you must follow:
 - If a tool returns no data, an error, or genuinely ambiguous evidence, say so honestly in your reasoning rather than guessing. Reporting low confidence, or recommending escalation for human review, is a better outcome than a confident conclusion you can't actually support.
 - You are producing a RECOMMENDATION only. You cannot and will not take any containment action (blocking an IP, disabling an account, isolating a host) -- only a human analyst can do that. Your recommended_action should reflect what you think a human should do next, not something you are doing yourself.
 - Internal/private IP addresses will not return threat-intel data -- enrich_ip will tell you an address was skipped for this reason. This is expected, not an error.
+- Before citing a specific MITRE ATT&CK technique ID, confirm it with search_mitre rather than relying on your own memory of ATT&CK IDs, which can be wrong, outdated, or refer to a technique that's since been restructured. If search_mitre doesn't return a clear match, say so rather than citing an unconfirmed ID.
 - Call submit_verdict exactly once, as your final action, once you have gathered enough evidence to reach a conclusion (including the conclusion that evidence is insufficient)."""
 
 
@@ -67,11 +69,13 @@ class SocAnalystAgent:
         llm_client: LLMClient,
         enrichment_service: EnrichmentService,
         asset_lookup: Callable[[str], dict],
+        retriever: Retriever,
         max_iterations: int = DEFAULT_MAX_ITERATIONS,
     ):
         self._client = llm_client
         self._enrichment = enrichment_service
         self._asset_lookup = asset_lookup
+        self._retriever = retriever
         self._max_iterations = max_iterations
 
     def investigate(self, case: Case, alerts_by_id: dict[UUID, Alert]) -> AgentResult:
@@ -140,6 +144,9 @@ class SocAnalystAgent:
                 return self._enrichment.enrich_hash(tool_input["sha256"]).model_dump(mode="json")
             if name == "get_asset_context":
                 return self._asset_lookup(tool_input["hostname"])
+            if name == "search_mitre":
+                results = self._retriever.search(tool_input["query"], k=tool_input.get("k", 5))
+                return {"results": [r.model_dump() for r in results]}
             return {"error": f"Unknown tool '{name}'"}
         except Exception as e:  # noqa: BLE001 - a failing tool must degrade to an error result, never crash the loop
             return {"error": str(e)}

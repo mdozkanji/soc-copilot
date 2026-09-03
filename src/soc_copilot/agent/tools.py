@@ -64,6 +64,28 @@ GET_ASSET_CONTEXT_TOOL = {
     },
 }
 
+SEARCH_MITRE_TOOL = {
+    "name": "search_mitre",
+    "description": (
+        "Search the real MITRE ATT&CK Enterprise technique corpus for techniques matching "
+        "a description of observed behavior. Use this to confirm a specific technique ID "
+        "and its official name/description before citing it -- do not rely on your own "
+        "memory of ATT&CK IDs, which can be wrong, outdated, or refer to a technique that's "
+        "since been deprecated or restructured. Returns the top-k matches ranked by relevance."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "A description of the observed behavior, e.g. an alert's rule name and description.",
+            },
+            "k": {"type": "integer", "description": "Number of results to return (default 5).", "default": 5},
+        },
+        "required": ["query"],
+    },
+}
+
 SUBMIT_VERDICT_TOOL = {
     "name": "submit_verdict",
     "description": (
@@ -109,4 +131,4 @@ SUBMIT_VERDICT_TOOL = {
     },
 }
 
-TOOL_DEFINITIONS = [ENRICH_IP_TOOL, ENRICH_HASH_TOOL, GET_ASSET_CONTEXT_TOOL, SUBMIT_VERDICT_TOOL]
+TOOL_DEFINITIONS = [ENRICH_IP_TOOL, ENRICH_HASH_TOOL, GET_ASSET_CONTEXT_TOOL, SEARCH_MITRE_TOOL, SUBMIT_VERDICT_TOOL]
