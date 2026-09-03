@@ -6,3 +6,4 @@ venv/
 *.egg-info/
 .env
 .DS_Store
+data/enrichment_cache.sqlite3
