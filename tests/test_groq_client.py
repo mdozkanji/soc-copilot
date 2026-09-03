@@ -96,6 +96,21 @@ def test_request_includes_a_bounded_max_tokens():
     client.create_message(system="s", history=[Turn(role="user", text="hi")], tools=[])
 
 
+def test_request_defaults_reasoning_effort_to_low():
+    """Regression test: gpt-oss's hidden reasoning tokens counted toward
+    the TPM preflight check independently of max_tokens in practice --
+    capping max_tokens alone was not enough to stay under the free tier's
+    8,000 TPM ceiling. reasoning_effort=low is the actual fix."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        assert body["reasoning_effort"] == "low"
+        return httpx.Response(200, json=TEXT_RESPONSE)
+
+    client = _client_with_handler(handler)
+    client.create_message(system="s", history=[Turn(role="user", text="hi")], tools=[])
+
+
 def test_assistant_tool_calls_are_encoded_as_json_string_arguments():
     def handler(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
@@ -225,3 +240,10 @@ def test_from_env_respects_groq_max_tokens_override(monkeypatch):
     monkeypatch.setenv("GROQ_MAX_TOKENS", "512")
     client = GroqClient.from_env()
     assert client._max_tokens == 512
+
+
+def test_from_env_respects_groq_reasoning_effort_override(monkeypatch):
+    monkeypatch.setenv("GROQ_API_KEY", "test-key")
+    monkeypatch.setenv("GROQ_REASONING_EFFORT", "high")
+    client = GroqClient.from_env()
+    assert client._reasoning_effort == "high"

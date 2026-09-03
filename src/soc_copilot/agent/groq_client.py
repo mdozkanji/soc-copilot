@@ -29,6 +29,19 @@ set GROQ_MAX_TOKENS lower in .env, or GROQ_MODEL to a different free model
 -- see console.groq.com/docs/models for current per-model limits, since
 these numbers are exactly the kind of thing Groq changes without much notice.
 
+NOTE on reasoning_effort: openai/gpt-oss-120b is a reasoning model --
+Groq's docs confirm it accepts a reasoning_effort parameter (low/medium/
+high, default medium) and that "low" produces "fast responses with
+minimal internal reasoning... uses fewer tokens." In practice, the hidden
+reasoning tokens this model generates appear to count toward Groq's TPM
+preflight check independently of max_tokens -- setting max_tokens=1024
+alone was not enough to stay under the 8,000 TPM ceiling (still saw a 413
+requesting ~11,400 tokens for a prompt this project measured at under
+2,000). Defaulting reasoning_effort to "low" is the actual fix; DEFAULT_MAX_TOKENS
+stays as a second, independent safeguard. See GROQ_REASONING_EFFORT below
+if a case ever genuinely needs deeper reasoning and there's TPM headroom
+to spend on it (e.g. on a paid tier).
+
 Built in the same style as every other HTTP client in this project:
 injectable httpx.Client, explicit retry/backoff, no SDK -- so the actual
 wire protocol is visible rather than hidden. The one genuinely tricky part
@@ -59,6 +72,7 @@ DEFAULT_MODEL = "openai/gpt-oss-120b"
 # 1024 is comfortably enough for a verdict or an intermediate reasoning
 # turn while leaving headroom under the TPM ceiling.
 DEFAULT_MAX_TOKENS = 1024
+DEFAULT_REASONING_EFFORT = "low"
 
 _RETRYABLE_STATUS_CODES = {429, 500, 502, 503}
 _MAX_RETRIES = 3
@@ -75,12 +89,14 @@ class GroqClient:
         api_key: str,
         model: str = DEFAULT_MODEL,
         max_tokens: int = DEFAULT_MAX_TOKENS,
+        reasoning_effort: str = DEFAULT_REASONING_EFFORT,
         http_client: Optional[httpx.Client] = None,
         sleep_fn: Callable[[float], None] = time.sleep,
     ):
         self._api_key = api_key
         self._model = model
         self._max_tokens = max_tokens
+        self._reasoning_effort = reasoning_effort
         self._sleep_fn = sleep_fn
         self._client = http_client or httpx.Client(base_url=BASE_URL, timeout=120.0)
 
@@ -99,12 +115,16 @@ class GroqClient:
         max_tokens = os.environ.get("GROQ_MAX_TOKENS")
         if max_tokens:
             kwargs.setdefault("max_tokens", int(max_tokens))
+        reasoning_effort = os.environ.get("GROQ_REASONING_EFFORT")
+        if reasoning_effort:
+            kwargs.setdefault("reasoning_effort", reasoning_effort)
         return cls(api_key=api_key, **kwargs)
 
     def create_message(self, *, system: str, history: list[Turn], tools: list[dict[str, Any]]) -> LLMResponse:
         body = {
             "model": self._model,
             "max_tokens": self._max_tokens,
+            "reasoning_effort": self._reasoning_effort,
             "messages": self._build_wire_messages(system, history),
             "tools": self._build_wire_tools(tools),
             "tool_choice": "auto",
