@@ -2,6 +2,7 @@ import tempfile
 from pathlib import Path
 
 from chromadb import EmbeddingFunction
+from chromadb.utils.embedding_functions import register_embedding_function
 
 from soc_copilot.rag.chroma_retriever import ChromaRetriever
 from soc_copilot.rag.mitre_loader import MitreTechnique
@@ -26,6 +27,7 @@ SAMPLE_TECHNIQUES = [
 ]
 
 
+@register_embedding_function
 class DeterministicFakeEmbeddingFunction(EmbeddingFunction):
     """A tiny, fully local, non-network embedding stand-in: represents each
     text as [char_count, space_count]. Not semantically meaningful -- it
@@ -33,7 +35,13 @@ class DeterministicFakeEmbeddingFunction(EmbeddingFunction):
     logic can be verified without downloading a real model, which this
     sandbox has no network path to (see chroma_retriever.py's docstring).
     Real semantic retrieval quality needs a real model, verified on your
-    machine, not this fake."""
+    machine, not this fake.
+
+    name() must be a classmethod and the class must go through
+    @register_embedding_function -- chromadb's own registration internals
+    call cls.name() without an instance to build its embedding-function
+    registry; an unregistered plain method previously caused a benign but
+    noisy DeprecationWarning on every test run using this fake."""
 
     def __init__(self):
         pass
@@ -41,7 +49,8 @@ class DeterministicFakeEmbeddingFunction(EmbeddingFunction):
     def __call__(self, input):
         return [[float(len(text)), float(text.count(" "))] for text in input]
 
-    def name(self):
+    @classmethod
+    def name(cls):
         return "deterministic-fake"
 
     def get_config(self):
