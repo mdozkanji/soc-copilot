@@ -21,6 +21,7 @@ from pathlib import Path
 from soc_copilot.agent.assets import load_asset_inventory, make_asset_lookup
 from soc_copilot.agent.groq_client import GroqClient
 from soc_copilot.agent.loop import AgentDidNotConverge, SocAnalystAgent
+from soc_copilot.agent.summary import render_summary
 from soc_copilot.correlate.cluster import correlate
 from soc_copilot.enrich.service import EnrichmentService
 from soc_copilot.ingest.schema import Alert
@@ -40,6 +41,7 @@ NORMALIZED_PATH = REPO_ROOT / "data" / "normalized_alerts.json"
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the SOC copilot agent over one case from the sample dataset.")
     parser.add_argument("--source-id", help="Pick the case containing this source_alert_id (e.g. sig-0001).")
+    parser.add_argument("--verbose", action="store_true", help="Also print the raw iteration-by-iteration trace before the summary report.")
     args = parser.parse_args()
 
     raw = json.loads(NORMALIZED_PATH.read_text())
@@ -75,17 +77,17 @@ def main() -> None:
         print(f"AGENT DID NOT CONVERGE: {e}")
         return
 
-    for entry in result.trace:
-        print(f"--- iteration {entry.iteration} ---")
-        if entry.assistant_text:
-            print(f"[reasoning] {entry.assistant_text}")
-        for call in entry.tool_calls:
-            print(f"  tool: {call.name}({call.input})")
-            print(f"    -> {json.dumps(call.result, default=str)[:300]}")
-        print()
+    if args.verbose:
+        for entry in result.trace:
+            print(f"--- iteration {entry.iteration} ---")
+            if entry.assistant_text:
+                print(f"[reasoning] {entry.assistant_text}")
+            for call in entry.tool_calls:
+                print(f"  tool: {call.name}({call.input})")
+                print(f"    -> {json.dumps(call.result, default=str)[:300]}")
+            print()
 
-    print("=== VERDICT ===")
-    print(json.dumps(json.loads(result.verdict.model_dump_json()), indent=2))
+    print(render_summary(result, case))
 
 
 if __name__ == "__main__":

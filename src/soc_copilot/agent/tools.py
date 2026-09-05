@@ -107,6 +107,14 @@ SUBMIT_VERDICT_TOOL = {
                 "maximum": 100,
                 "description": "Your confidence in this verdict, 0-100. Low confidence is a valid, honest answer.",
             },
+            "evidence_sufficient": {
+                "type": "boolean",
+                "description": "Is the evidence you gathered actually enough to support a confident conclusion? "
+                "False is expected and correct when tools returned no data, conflicting signals, or you were "
+                "unable to confirm key facts -- do not set this to True just because you've reached some "
+                "conclusion. If False, confidence must be <= 40 and recommended_action must be "
+                "recommend_monitor or recommend_escalate_analyst.",
+            },
             "mitre_techniques": {
                 "type": "array",
                 "items": {"type": "string"},
@@ -127,7 +135,7 @@ SUBMIT_VERDICT_TOOL = {
                 "description": "Short, specific citations of your strongest evidence, e.g. 'VirusTotal: 15/91 engines flag this IP as malicious'.",
             },
         },
-        "required": ["severity", "confidence", "recommended_action", "reasoning"],
+        "required": ["severity", "confidence", "evidence_sufficient", "recommended_action", "reasoning"],
     },
 }
 

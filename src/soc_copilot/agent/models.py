@@ -14,6 +14,20 @@ AgentTraceEntry exists so an investigation is auditable step by step, not
 just as a final answer -- this is the actual point of the whole project
 (see docs/PROJECT_OVERVIEW.md): every claim in a verdict should be
 traceable back to a specific tool call an analyst can inspect.
+
+Week 6: evidence_sufficient is a deliberate, explicit boolean, not just a
+low confidence number. The reasoning: an LLM can write confidence=15 while
+its prose still reads confidently, because natural-language hedging and a
+numeric score aren't the same thing and can drift apart. Forcing a
+discrete "do I actually have enough to conclude this, yes or no" decision
+through the JSON schema is a stronger lever than hoping the number and the
+tone agree, and it gives downstream code (a dashboard, an analyst queue)
+something to hard-filter on instead of picking an arbitrary confidence
+threshold. The cross-field validators below enforce that the two can't
+silently contradict each other -- and because a validation failure here
+routes through the exact same is_error tool_result / self-correction path
+Week 4 already built for a malformed submit_verdict call, this required no
+changes to loop.py at all.
 """
 
 from __future__ import annotations
@@ -21,9 +35,23 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from soc_copilot.ingest.schema import Severity
+
+# A verdict claiming evidence is insufficient shouldn't also claim high
+# confidence -- that's a direct contradiction in what the two fields mean,
+# not a style preference. Chosen conservatively (40, not 50) so "borderline
+# confident" still has to admit it's borderline.
+MAX_CONFIDENCE_WHEN_EVIDENCE_INSUFFICIENT = 40
+
+# With insufficient evidence, only these two actions are coherent: keep
+# watching, or hand it to a human. Confidently closing something as benign
+# or escalating it as urgent both assert a level of certainty that
+# directly contradicts evidence_sufficient=False.
+_ACTIONS_ALLOWED_WHEN_EVIDENCE_INSUFFICIENT = frozenset(
+    {"recommend_monitor", "recommend_escalate_analyst"}
+)
 
 
 class RecommendedAction(str, Enum):
@@ -41,10 +69,33 @@ class RecommendedAction(str, Enum):
 class Verdict(BaseModel):
     severity: Severity
     confidence: int = Field(..., ge=0, le=100, description="0-100 confidence in this verdict.")
+    evidence_sufficient: bool = Field(
+        ...,
+        description="Whether the gathered evidence is actually enough to support a confident conclusion. "
+        "False is a legitimate, expected answer, not a failure -- see the module docstring.",
+    )
     mitre_techniques: list[str] = Field(default_factory=list)
     recommended_action: RecommendedAction
     reasoning: str = Field(..., min_length=1)
     key_evidence: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _check_evidence_sufficiency_is_internally_consistent(self) -> "Verdict":
+        if not self.evidence_sufficient:
+            if self.confidence > MAX_CONFIDENCE_WHEN_EVIDENCE_INSUFFICIENT:
+                raise ValueError(
+                    f"evidence_sufficient=False but confidence={self.confidence} "
+                    f"(must be <= {MAX_CONFIDENCE_WHEN_EVIDENCE_INSUFFICIENT}): "
+                    "a verdict can't claim both 'I don't have enough evidence' and 'I'm quite confident.'"
+                )
+            if self.recommended_action.value not in _ACTIONS_ALLOWED_WHEN_EVIDENCE_INSUFFICIENT:
+                raise ValueError(
+                    f"evidence_sufficient=False but recommended_action={self.recommended_action.value}: "
+                    f"with insufficient evidence, only {sorted(_ACTIONS_ALLOWED_WHEN_EVIDENCE_INSUFFICIENT)} "
+                    "are coherent -- confidently closing as benign or escalating as urgent both assert a "
+                    "certainty that contradicts insufficient evidence."
+                )
+        return self
 
 
 class ToolCallRecord(BaseModel):

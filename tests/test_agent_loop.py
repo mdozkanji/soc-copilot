@@ -82,6 +82,7 @@ def _agent(fake_client, enrichment=None, asset_inventory=None, retriever=None, m
 VALID_VERDICT_INPUT = {
     "severity": "high",
     "confidence": 90,
+    "evidence_sufficient": True,
     "mitre_techniques": ["T1071"],
     "recommended_action": "recommend_escalate_urgent",
     "reasoning": "The destination IP is a known Tor exit node with malicious detections.",
@@ -202,6 +203,63 @@ def test_search_mitre_dispatches_to_the_retriever_and_records_results():
     assert retriever.queries == [("encoded powershell", 3)]
     tool_result = result.trace[0].tool_calls[0].result
     assert tool_result["results"][0]["technique_id"] == "T1059.001"
+
+
+# --------------------------------------------------------------------------
+# abstention (evidence_sufficient)
+# --------------------------------------------------------------------------
+
+def test_legitimate_abstention_verdict_converges_normally():
+    """evidence_sufficient=False with a consistent confidence/action combo
+    is a valid, first-try submission -- must NOT be treated as an error
+    just because the conclusion is 'I don't know'."""
+    case, alerts_by_id = _make_case_and_alert()
+    abstention_verdict = {
+        "severity": "informational",
+        "confidence": 20,
+        "evidence_sufficient": False,
+        "mitre_techniques": [],
+        "recommended_action": "recommend_escalate_analyst",
+        "reasoning": "enrich_ip returned no data for the destination IP and no other evidence corroborates a verdict either way.",
+        "key_evidence": [],
+    }
+    fake = FakeLLMClient([LLMResponse(tool_calls=[ToolCall(id="t1", name="submit_verdict", input=abstention_verdict)])])
+    agent = _agent(fake)
+
+    result = agent.investigate(case, alerts_by_id)
+
+    assert result.iterations == 1  # converged on the first attempt, not bounced back as an error
+    assert result.verdict.evidence_sufficient is False
+
+
+def test_internally_inconsistent_abstention_verdict_is_rejected_and_can_be_corrected():
+    """High confidence + evidence_sufficient=False is a direct contradiction
+    the Verdict model itself must catch -- exercised through the loop to
+    confirm it plugs into the existing self-correction path from Week 4
+    without needing any loop.py changes."""
+    case, alerts_by_id = _make_case_and_alert()
+    contradictory = {
+        "severity": "high",
+        "confidence": 95,  # contradicts evidence_sufficient=False
+        "evidence_sufficient": False,
+        "mitre_techniques": [],
+        "recommended_action": "recommend_escalate_analyst",
+        "reasoning": "Not sure, but very confident about it somehow.",
+        "key_evidence": [],
+    }
+    corrected = {**contradictory, "confidence": 25}
+    fake = FakeLLMClient(
+        [
+            LLMResponse(tool_calls=[ToolCall(id="t1", name="submit_verdict", input=contradictory)]),
+            LLMResponse(tool_calls=[ToolCall(id="t2", name="submit_verdict", input=corrected)]),
+        ]
+    )
+    agent = _agent(fake)
+
+    result = agent.investigate(case, alerts_by_id)
+
+    assert result.iterations == 2
+    assert result.verdict.confidence == 25
 
 
 def test_malformed_verdict_is_rejected_and_agent_gets_a_chance_to_retry():
