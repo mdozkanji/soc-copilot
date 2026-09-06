@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Feedback Log — soc-copilot{% endblock %}
+{% block content %}
+<h1>Feedback Log</h1>
+<p>Every analyst review, most recent first. This is the actual dataset this project is building --
+   it matters more than any single accuracy number, because it's the first real signal about where
+   the agent's calibration needs work.</p>
+
+{% if not entries %}
+<p><em>No reviews logged yet.</em> Visit a case and click Accept or Override to add one.</p>
+{% else %}
+<table>
+    <thead>
+        <tr><th>Case</th><th>Decision</th><th>Reason</th><th>Corrections</th><th>When</th></tr>
+    </thead>
+    <tbody>
+        {% for e in entries %}
+        <tr>
+            <td><a href="/cases/{{ e.case_id }}">{{ e.case_id }}</a></td>
+            <td>{{ e.decision }}</td>
+            <td>{{ e.reason or '—' }}</td>
+            <td>
+                {% if e.corrected_severity %}severity → {{ e.corrected_severity }}<br>{% endif %}
+                {% if e.corrected_action %}action → {{ e.corrected_action }}{% endif %}
+                {% if not e.corrected_severity and not e.corrected_action %}—{% endif %}
+            </td>
+            <td>{{ e.reviewed_at }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endblock %}

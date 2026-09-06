@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Not found — soc-copilot{% endblock %}
+{% block content %}
+<h1>Case not found</h1>
+<p>No case with id <code>{{ case_id }}</code> exists in the current correlated set.</p>
+<p><a href="/cases">&larr; back to queue</a></p>
+{% endblock %}

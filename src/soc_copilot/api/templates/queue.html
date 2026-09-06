@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Case Queue — soc-copilot{% endblock %}
+{% block content %}
+<h1>Case Queue</h1>
+<p>{{ rows|length }} correlated case(s). Cases with no stored investigation show as "not yet investigated" --
+   live agent runs are currently blocked (see <code>devlog/0009-pausing-live-agent-verification.md</code>).</p>
+
+<table>
+    <thead>
+        <tr><th>Case</th><th>Alerts</th><th>Hosts</th><th>Verdict</th><th>Review</th></tr>
+    </thead>
+    <tbody>
+        {% for row in rows %}
+        <tr class="{{ 'uninvestigated' if not row.investigated }}">
+            <td><a href="/cases/{{ row.case.case_id }}">{{ row.case.case_id }}</a></td>
+            <td>{{ row.case.alert_count }}</td>
+            <td>{{ row.case.hosts|join(', ') }}</td>
+            <td>
+                {% if row.verdict %}
+                    <span class="badge {{ row.verdict.severity.value }}">{{ row.verdict.severity.value }}</span>
+                    {{ row.verdict.confidence }}/100
+                    {% if not row.verdict.evidence_sufficient %}<span class="badge insufficient">insufficient evidence</span>{% endif %}
+                {% else %}
+                    not yet investigated
+                {% endif %}
+            </td>
+            <td>{{ row.reviewed or '—' }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

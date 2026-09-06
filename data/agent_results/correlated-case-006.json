@@ -1,0 +1,71 @@
+{
+  "case": {
+    "case_id": "correlated-case-006",
+    "alert_ids": [
+      "a33f7a51-bbaa-4728-bb67-45d25cb8d694"
+    ],
+    "source_alert_ids": [
+      "edr-9003"
+    ],
+    "first_seen": "2026-08-20T11:02:03Z",
+    "last_seen": "2026-08-20T11:02:03Z",
+    "hosts": [
+      "WKS-EU-0450"
+    ],
+    "users": [
+      "bpatel"
+    ],
+    "ips": [],
+    "file_hashes": [
+      "b1115f55f0c9deb2ac758653b576d0d61b5e02f595a0adea54c6193a9a9b1264"
+    ],
+    "link_reasons": []
+  },
+  "result": {
+    "case_id": "correlated-case-006",
+    "verdict": {
+      "severity": "informational",
+      "confidence": 25,
+      "evidence_sufficient": false,
+      "mitre_techniques": [],
+      "recommended_action": "recommend_escalate_analyst",
+      "reasoning": "The only concrete signal is that the binary is unsigned and ran from a Downloads/Temp directory, which is common for both legitimate installers and malware droppers -- not distinguishing on its own. VirusTotal has no record of this file hash at all (found=false), which is genuinely ambiguous: it could mean the file is new/rare (consistent with either a fresh legitimate tool or unseen malware), not evidence in either direction. The asset is a standard Finance workstation with no elevated privileges, which caps the plausible impact but doesn't resolve whether this is malicious. There is no network, persistence, or lateral-movement signal in this alert to corroborate a malicious read, but there is also no user or business context confirming this was an expected/approved installation. Recommending human review rather than a confident call either way.",
+      "key_evidence": []
+    },
+    "trace": [
+      {
+        "iteration": 1,
+        "assistant_text": "Unsigned binary from a temp directory is ambiguous on its own -- checking hash reputation and asset context before concluding anything.",
+        "tool_calls": [
+          {
+            "name": "enrich_hash",
+            "input": {
+              "sha256": "b1115f55f0c9deb2ac758653b576d0d61b5e02f595a0adea54c6193a9a9b1264"
+            },
+            "result": {
+              "sha256": "b1115f55f0c9deb2ac758653b576d0d61b5e02f595a0adea54c6193a9a9b1264",
+              "source": "virustotal",
+              "found": false
+            }
+          },
+          {
+            "name": "get_asset_context",
+            "input": {
+              "hostname": "WKS-EU-0450"
+            },
+            "result": {
+              "found": true,
+              "hostname": "WKS-EU-0450",
+              "owner": "bpatel",
+              "department": "Finance",
+              "asset_type": "workstation",
+              "criticality": "medium",
+              "notes": "Standard end-user workstation with access to financial reporting systems."
+            }
+          }
+        ]
+      }
+    ],
+    "iterations": 1
+  }
+}

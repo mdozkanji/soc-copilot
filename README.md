@@ -4,7 +4,7 @@ An AI-powered SOC alert triage & investigation copilot: a tool-calling LLM agent
 
 Built as a portfolio/research project — see [`docs/PROJECT_OVERVIEW.md`](docs/PROJECT_OVERVIEW.md) for the full rationale (problem, approach, why it matters, competitive landscape) and [`docs/BUILD_PLAN.md`](docs/BUILD_PLAN.md) for the week-by-week plan. Progress is tracked as we go in [`devlog/`](devlog/), written during each build session rather than reconstructed afterward.
 
-## Status: Week 6 — Verdicts, abstention, and a grounding auditor ✅ complete
+## Status: Week 7 — Minimal analyst UI + feedback loop ✅ complete
 
 - [x] Repo scaffold, `pyproject.toml`, package layout
 - [x] Internal `Alert` schema (`src/soc_copilot/ingest/schema.py`)
@@ -22,10 +22,11 @@ Built as a portfolio/research project — see [`docs/PROJECT_OVERVIEW.md`](docs/
 - [x] First-class abstention: `Verdict.evidence_sufficient` with internal-consistency validators (`src/soc_copilot/agent/models.py`)
 - [x] Grounding auditor: checks whether a verdict's claims are backed by its own trace (`src/soc_copilot/agent/audit.py`)
 - [x] Human-readable investigation reports (`src/soc_copilot/agent/summary.py`), with 2 sample reports built from real project data (`eval/samples/`)
+- [x] Analyst review UI: FastAPI + Jinja2, case queue, Accept/Override with a real feedback log (`src/soc_copilot/api/`)
 - [ ] Dense-embedding retriever (`chroma_retriever.py`) -- code-complete, needs your machine to verify (`pip install -e ".[embeddings]"`, no huggingface.co access from this sandbox)
-- [x] Unit tests, all passing (153/153, `tests/`)
+- [x] Unit tests, all passing (176/176, `tests/`)
 - [ ] **Live agent run against the real Groq API — blocked, not yet achieved.** Four attempts (model deprecation, missing `max_tokens`, `gpt-oss` reasoning-token overhead) each fixed a real, distinct problem, but the free tier's 8,000 TPM ceiling is still being exceeded. Paused rather than continuing to guess blind with no way to inspect the live API from this environment. Full writeup: `devlog/0009-pausing-live-agent-verification.md`.
-- [ ] Week 7: minimal analyst UI + feedback loop
+- [ ] Week 8: evaluation, docs, demo
 
 ## Quickstart
 
@@ -54,8 +55,8 @@ soc-copilot/
 │       ├── enrich/     # VirusTotal / AbuseIPDB clients, cache, rate limiting (Week 2)
 │       ├── correlate/  # entity-based clustering into cases (Week 3)
 │       ├── agent/      # tool-calling agent loop (Groq/gpt-oss, provider-agnostic interface), verdict schema (Week 4)
-│       └── rag/        # real MITRE ATT&CK corpus + retrieval for search_mitre (Week 5)
-│           # api/ arrives in a later week
+│       ├── rag/        # real MITRE ATT&CK corpus + retrieval for search_mitre (Week 5)
+│       └── api/        # FastAPI analyst review UI + feedback log (Week 7)
 └── tests/
 ```
 
@@ -71,6 +72,12 @@ python -m eval.retrieval_eval
 
 # regenerate the sample investigation reports (built from real project data; see eval/samples/)
 python -m eval.generate_sample_reports
+
+# seed the analyst review UI with the two illustrative examples above
+python -m soc_copilot.api.seed
+
+# start the analyst review UI at http://127.0.0.1:8000/cases
+uvicorn soc_copilot.api.app:app --reload --app-dir src
 
 # run the agent end-to-end on a real case (needs GROQ_API_KEY -- free, no card: https://console.groq.com/keys; VT/AbuseIPDB keys optional; currently blocked, see devlog/0009-*.md)
 python -m soc_copilot.agent.cli

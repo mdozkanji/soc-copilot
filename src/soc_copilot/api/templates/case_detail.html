@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}{{ case.case_id }} — soc-copilot{% endblock %}
+{% block content %}
+<p><a href="/cases">&larr; back to queue</a></p>
+<h1>{{ case.case_id }}</h1>
+
+{% if not investigated %}
+    <p><em>Not yet investigated.</em> This case has no stored agent result -- live agent runs are currently
+       blocked (see <code>devlog/0009-pausing-live-agent-verification.md</code>). Once unblocked, running the
+       agent and calling <code>AgentResultStore.save()</code> populates this automatically.</p>
+{% else %}
+    {% if warnings %}
+    <div class="warning-box">
+        <strong>⚠ Automated consistency check</strong>
+        <p>These checks flag verdict claims that don't appear to be backed by the investigation trace.
+           This is not a correctness check -- it's a narrower, cheap check for internal consistency.</p>
+        <ul>
+            {% for w in warnings %}<li>{{ w }}</li>{% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <pre class="report">{{ report_text }}</pre>
+
+    <form class="review" method="post" action="/cases/{{ case.case_id }}/review">
+        <h3>Analyst review</h3>
+        <label for="reason">Reason (required for override)</label>
+        <textarea id="reason" name="reason" rows="3" placeholder="Why are you accepting or overriding this verdict?"></textarea>
+
+        <label for="corrected_severity">Corrected severity (override only)</label>
+        <select id="corrected_severity" name="corrected_severity">
+            <option value="">— no change —</option>
+            {% for s in severities %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+        </select>
+
+        <label for="corrected_action">Corrected recommended action (override only)</label>
+        <select id="corrected_action" name="corrected_action">
+            <option value="">— no change —</option>
+            {% for a in actions %}<option value="{{ a }}">{{ a }}</option>{% endfor %}
+        </select>
+
+        <button type="submit" class="accept" name="decision" value="accept">Accept</button>
+        <button type="submit" class="override" name="decision" value="override">Override</button>
+    </form>
+
+    {% if history %}
+    <h3>Review history</h3>
+    {% for entry in history %}
+    <div class="history-entry">
+        <strong>{{ entry.decision }}</strong> at {{ entry.reviewed_at }}
+        {% if entry.reason %}<br>Reason: {{ entry.reason }}{% endif %}
+        {% if entry.corrected_severity %}<br>Corrected severity: {{ entry.corrected_severity }}{% endif %}
+        {% if entry.corrected_action %}<br>Corrected action: {{ entry.corrected_action }}{% endif %}
+    </div>
+    {% endfor %}
+    {% endif %}
+{% endif %}
+{% endblock %}

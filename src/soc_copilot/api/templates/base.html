@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>{% block title %}soc-copilot{% endblock %}</title>
+    <style>
+        body { font-family: -apple-system, Segoe UI, Helvetica, Arial, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
+        nav { margin-bottom: 1.5rem; }
+        nav a { margin-right: 1rem; text-decoration: none; color: #2454a6; font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+        th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid #ddd; }
+        th { background: #f4f4f4; }
+        tr.uninvestigated { color: #888; }
+        .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600; }
+        .badge.critical, .badge.high { background: #fbdada; color: #8a1c1c; }
+        .badge.medium { background: #fbe9c7; color: #8a5a1c; }
+        .badge.low, .badge.informational { background: #dbeee0; color: #1c6b34; }
+        .badge.insufficient { background: #eee; color: #555; border: 1px dashed #aaa; }
+        .warning-box { background: #fff8e1; border: 1px solid #f0d878; border-radius: 6px; padding: 1rem; margin: 1rem 0; }
+        .warning-box ul { margin: 0.5rem 0 0 0; }
+        pre.report { white-space: pre-wrap; background: #fafafa; border: 1px solid #e0e0e0; border-radius: 6px; padding: 1rem; }
+        form.review { border: 1px solid #ddd; border-radius: 6px; padding: 1rem; margin-top: 1.5rem; }
+        form.review label { display: block; margin-top: 0.5rem; font-weight: 600; }
+        form.review select, form.review textarea, form.review input { width: 100%; padding: 0.4rem; margin-top: 0.2rem; box-sizing: border-box; }
+        button { margin-top: 1rem; padding: 0.5rem 1.2rem; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; }
+        button.accept { background: #2e7d32; color: white; }
+        button.override { background: #c62828; color: white; margin-left: 0.5rem; }
+        .history-entry { border-left: 3px solid #ccc; padding-left: 0.75rem; margin: 0.75rem 0; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="/cases">Case Queue</a>
+        <a href="/feedback">Feedback Log</a>
+    </nav>
+    {% block content %}{% endblock %}
+</body>
+</html>
