@@ -30,7 +30,14 @@ embeddings = [
 ]
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
+# "." (repo root) is needed alongside "src" so the top-level eval/ package
+# (used by tests/test_triage_eval.py) is importable. Only adding "src"
+# worked during this project's own development because it was tested via
+# `python -m pytest`, which implicitly adds the current working directory
+# to sys.path -- bare `pytest` (the standard invocation, and what most
+# people, including anyone applying this patch, will actually run) does
+# not do that, so the gap was real and just went unnoticed here.
+pythonpath = ["src", "."]
 testpaths = ["tests"]
 
 [build-system]
