@@ -2,31 +2,27 @@
 
 An AI-powered SOC alert triage & investigation copilot: a tool-calling LLM agent that ingests SIEM/EDR-style alerts, correlates them into cases, enriches them against real threat-intel APIs, and produces an explainable, citation-backed triage verdict for a human analyst to accept or override.
 
-Built as a portfolio/research project — see [`docs/PROJECT_OVERVIEW.md`](docs/PROJECT_OVERVIEW.md) for the full rationale (problem, approach, why it matters, competitive landscape) and [`docs/BUILD_PLAN.md`](docs/BUILD_PLAN.md) for the week-by-week plan. Progress is tracked as we go in [`devlog/`](devlog/), written during each build session rather than reconstructed afterward.
+Built as a portfolio/research project over an 8-week build — see [`docs/PROJECT_OVERVIEW.md`](docs/PROJECT_OVERVIEW.md) for the full rationale (problem, approach, why it matters, competitive landscape) and [`docs/BUILD_PLAN.md`](docs/BUILD_PLAN.md) for the week-by-week plan. Progress is tracked as it happened in [`devlog/`](devlog/), written during each build session rather than reconstructed afterward — that history is part of the point of this project, not incidental to it.
 
-## Status: Week 7 — Minimal analyst UI + feedback loop ✅ complete
+**Start here if you're evaluating this project**: [`eval/report.md`](eval/report.md) (what's actually been measured, and the one honest gap) and [`docs/threat-model.md`](docs/threat-model.md) (what this system should never be trusted to do, and why).
 
-- [x] Repo scaffold, `pyproject.toml`, package layout
-- [x] Internal `Alert` schema (`src/soc_copilot/ingest/schema.py`)
-- [x] Per-source normalizers for two sample formats (`src/soc_copilot/ingest/normalize.py`)
-- [x] 16-alert hand-authored sample dataset with ground-truth labels (`data/`, `eval/labels.json`)
-- [x] VirusTotal + AbuseIPDB clients with retry/backoff (`src/soc_copilot/enrich/`)
-- [x] SQLite TTL cache + persisted daily-quota tracking + sliding-window rate limiter
-- [x] Private/internal-IP guard (verified against all 13 distinct IPs in the sample set)
-- [x] Live-verified against real VT/AbuseIPDB APIs
-- [x] Entity-based correlation engine with time-windowed connected-components clustering (`src/soc_copilot/correlate/`)
-- [x] Cluster-purity tests against real ground truth (`eval/labels.json`)
-- [x] Tool-calling agent loop: `enrich_ip`, `enrich_hash`, `get_asset_context`, `search_mitre`, `submit_verdict` (`src/soc_copilot/agent/`), provider-agnostic (`llm_types.py`), currently wired to Groq's free tier (`groq_client.py`)
-- [x] Real MITRE ATT&CK corpus (697 techniques, official STIX data) + TF-IDF retriever, verified end-to-end (`src/soc_copilot/rag/`)
-- [x] Retrieval-quality evaluation against ground truth (`eval/retrieval_eval.py`) -- honest numbers, not polished: strict top-1 20%, top-5 recall 50%
-- [x] First-class abstention: `Verdict.evidence_sufficient` with internal-consistency validators (`src/soc_copilot/agent/models.py`)
-- [x] Grounding auditor: checks whether a verdict's claims are backed by its own trace (`src/soc_copilot/agent/audit.py`)
-- [x] Human-readable investigation reports (`src/soc_copilot/agent/summary.py`), with 2 sample reports built from real project data (`eval/samples/`)
+## Status: Week 8 of 8 — evaluation, docs, demo ✅ complete (core pipeline); live agent verification blocked
+
+The originally-planned 8-week build is complete. One real gap remains, stated plainly rather than hidden: **live agent verification against a real LLM has not been achieved** — see below.
+
+- [x] Ingestion: normalized `Alert` schema, per-source normalizers, 16-alert hand-authored sample dataset with ground-truth labels (`src/soc_copilot/ingest/`, `data/`, `eval/labels.json`)
+- [x] Enrichment: VirusTotal + AbuseIPDB clients, retry/backoff, SQLite TTL cache, private-IP guard, **live-verified against real APIs** (`src/soc_copilot/enrich/`)
+- [x] Correlation: entity-based, time-windowed clustering, **cluster-purity tested against real ground truth** (`src/soc_copilot/correlate/`)
+- [x] Agent core: tool-calling loop (`enrich_ip`, `enrich_hash`, `get_asset_context`, `search_mitre`, `submit_verdict`), provider-agnostic interface, currently wired to Groq's free tier (`src/soc_copilot/agent/`)
+- [x] RAG: real MITRE ATT&CK corpus (697 techniques, official STIX data), TF-IDF retriever verified end-to-end, **retrieval-quality measured and reported honestly** (strict top-1 20%, top-5 recall 50%) (`src/soc_copilot/rag/`)
+- [x] Trust layer: first-class abstention (`evidence_sufficient` with consistency validators), a grounding auditor checking verdict claims against their own trace, human-readable investigation reports (`src/soc_copilot/agent/models.py`, `audit.py`, `summary.py`)
 - [x] Analyst review UI: FastAPI + Jinja2, case queue, Accept/Override with a real feedback log (`src/soc_copilot/api/`)
-- [ ] Dense-embedding retriever (`chroma_retriever.py`) -- code-complete, needs your machine to verify (`pip install -e ".[embeddings]"`, no huggingface.co access from this sandbox)
-- [x] Unit tests, all passing (176/176, `tests/`)
-- [ ] **Live agent run against the real Groq API — blocked, not yet achieved.** Four attempts (model deprecation, missing `max_tokens`, `gpt-oss` reasoning-token overhead) each fixed a real, distinct problem, but the free tier's 8,000 TPM ceiling is still being exceeded. Paused rather than continuing to guess blind with no way to inspect the live API from this environment. Full writeup: `devlog/0009-pausing-live-agent-verification.md`.
-- [ ] Week 8: evaluation, docs, demo
+- [x] Prompt-injection mitigation: untrusted alert content delimited and framed explicitly, verified structurally (`agent/loop.py`, `docs/threat-model.md`)
+- [x] Triage evaluation harness: precision/recall/FNR/abstention-rate computation, fully unit-tested (`eval/triage_eval.py`)
+- [x] Threat model and consolidated evaluation report (`docs/threat-model.md`, `eval/report.md`)
+- [x] Unit tests, all passing (196/196, `tests/`)
+- [ ] **Dense-embedding retriever** (`rag/chroma_retriever.py`) — code-complete, needs your machine to verify (`pip install -e ".[embeddings]"`; no `huggingface.co` access from the sandbox this was built in)
+- [ ] **Live agent verification — blocked, not achieved.** Four distinct, individually-fixed problems in a row (a model deprecation, a dropped `max_tokens` parameter, `gpt-oss`'s reasoning-token overhead, and a fourth attempt that still didn't resolve it) against Groq's free-tier TPM limit. Paused deliberately rather than continuing to guess blind with no way to inspect the live API from this development environment. This is also why the project's single most important metric — real triage precision/recall against the labeled set — has not been obtained; see `eval/report.md` Section 2 for the full honest accounting.
 
 ## Quickstart
 
@@ -45,16 +41,16 @@ python -m soc_copilot.ingest.load_samples
 
 ```
 soc-copilot/
-├── docs/          # project overview, build plan, per-topic notes (data, architecture, threat model)
-├── devlog/        # dated session logs, written as we build
-├── data/          # raw + normalized sample alerts
-├── eval/          # ground-truth labels and (from Week 8) the evaluation harness
+├── docs/          # project overview, build plan, data notes, threat model
+├── devlog/        # dated session logs, written as we built -- the real history
+├── data/          # raw + normalized sample alerts, MITRE corpus, seeded demo results
+├── eval/          # ground-truth labels, evaluation harnesses, consolidated report, sample reports
 ├── src/
 │   └── soc_copilot/
 │       ├── ingest/     # alert schema + normalization (Week 1)
 │       ├── enrich/     # VirusTotal / AbuseIPDB clients, cache, rate limiting (Week 2)
 │       ├── correlate/  # entity-based clustering into cases (Week 3)
-│       ├── agent/      # tool-calling agent loop (Groq/gpt-oss, provider-agnostic interface), verdict schema (Week 4)
+│       ├── agent/      # tool-calling agent loop (Groq/gpt-oss, provider-agnostic interface), verdict schema, sample cases (Week 4/6)
 │       ├── rag/        # real MITRE ATT&CK corpus + retrieval for search_mitre (Week 5)
 │       └── api/        # FastAPI analyst review UI + feedback log (Week 7)
 └── tests/
@@ -70,6 +66,9 @@ python -m soc_copilot.rag.cli "encoded PowerShell command execution"
 # run the retrieval-quality evaluation against ground truth
 python -m eval.retrieval_eval
 
+# run the triage evaluation harness against whatever's currently seeded (demonstration only -- see eval/report.md)
+python -m eval.triage_eval
+
 # regenerate the sample investigation reports (built from real project data; see eval/samples/)
 python -m eval.generate_sample_reports
 
@@ -79,13 +78,15 @@ python -m soc_copilot.api.seed
 # start the analyst review UI at http://127.0.0.1:8000/cases
 uvicorn soc_copilot.api.app:app --reload --app-dir src
 
-# run the agent end-to-end on a real case (needs GROQ_API_KEY -- free, no card: https://console.groq.com/keys; VT/AbuseIPDB keys optional; currently blocked, see devlog/0009-*.md)
+# run the agent end-to-end on a real case (needs GROQ_API_KEY; VT/AbuseIPDB keys optional; currently blocked, see devlog/0009-*.md)
 python -m soc_copilot.agent.cli
 ```
 
 ## Environment variables
 
 Copy `.env.example` to `.env` and fill in your own free-tier API keys (never commit `.env` — it's gitignored):
+- `GROQ_API_KEY` — required for the agent. Free, no credit card: https://console.groq.com/keys
+- `GROQ_MODEL` / `GROQ_MAX_TOKENS` / `GROQ_REASONING_EFFORT` — optional overrides; Groq's free-tier catalog and limits change frequently, see `devlog/0004-*.md` through `0008-*.md`
 - `VT_API_KEY` — https://www.virustotal.com/gui/my-apikey
 - `ABUSEIPDB_API_KEY` — https://www.abuseipdb.com/account/api
 
